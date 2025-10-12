@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-chart-line"></i>
+        Dashboard - Tổng quan
+    </h1>
+    <p>Chào mừng @ViewBag.Username đến với hệ thống quản lý khách sạn</p>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon primary">
+                <i class="fas fa-bed"></i>
+            </div>
+            <div class="stats-title">TỔNG SỐ PHÒNG</div>
+            <div class="stats-value">@ViewBag.TotalRooms</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon success">
+                <i class="fas fa-door-open"></i>
+            </div>
+            <div class="stats-title">PHÒNG TRỐNG</div>
+            <div class="stats-value">@ViewBag.AvailableRooms</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card warning fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon warning">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stats-title">PHÒNG ĐANG SỬ DỤNG</div>
+            <div class="stats-value">@ViewBag.OccupiedRooms</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card info fade-in-up" style="animation-delay: 0.4s">
+            <div class="stats-icon info">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stats-title">ĐẶT PHÒNG HÔM NAY</div>
+            <div class="stats-value">@ViewBag.TodayReservations</div>
+        </div>
+    </div>
+</div>
+
+<!-- Secondary Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+            <div class="card-body-modern text-center">
+                <div class="stats-icon primary mx-auto">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stats-title mt-3">TỔNG KHÁCH HÀNG</div>
+                <div class="stats-value">@ViewBag.TotalCustomers</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
+            <div class="card-body-modern text-center">
+                <div class="stats-icon info mx-auto">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="stats-title mt-3">TỔNG NHÂN VIÊN</div>
+                <div class="stats-value">@ViewBag.TotalEmployees</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+            <div class="card-body-modern text-center">
+                <div class="stats-icon danger mx-auto">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="stats-title mt-3">DOANH THU THÁNG NÀY</div>
+                <div class="stats-value text-success">@ViewBag.MonthlyRevenue.ToString("N0") VNĐ</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.8s">
+    <div class="card-header-modern">
+        <i class="fas fa-tasks me-2"></i>
+        Chức năng chính
+    </div>
+    <div class="card-body-modern">
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <a href="@Url.Action("Create", "Reservation")" class="btn btn-primary-modern w-100 py-4">
+                    <i class="fas fa-calendar-plus fa-2x d-block mb-3"></i>
+                    <strong>Đặt phòng mới</strong>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="@Url.Action("Index", "CheckIn")" class="btn btn-success-modern w-100 py-4">
+                    <i class="fas fa-sign-in-alt fa-2x d-block mb-3"></i>
+                    <strong>Check-in</strong>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="@Url.Action("Index", "CheckOut")" class="btn btn-warning-modern w-100 py-4">
+                    <i class="fas fa-sign-out-alt fa-2x d-block mb-3"></i>
+                    <strong>Check-out</strong>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="@Url.Action("Index", "Invoice")" class="btn btn-info-modern w-100 py-4">
+                    <i class="fas fa-file-invoice fa-2x d-block mb-3"></i>
+                    <strong>Hóa đơn</strong>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

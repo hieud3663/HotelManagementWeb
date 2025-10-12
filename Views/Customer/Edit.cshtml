@@ -1,0 +1,116 @@
+@model HotelManagement.Models.Customer
+
+@{
+    ViewData["Title"] = "Sửa thông tin khách hàng";
+}
+
+<div class="container-modern">
+    <div class="header-modern">
+        <h2><i class="fas fa-user-edit me-2"></i>Sửa thông tin khách hàng</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb-modern">
+                <li class="breadcrumb-item-modern"><a asp-controller="Dashboard" asp-action="Index">Trang chủ</a></li>
+                <li class="breadcrumb-item-modern"><a asp-action="Index">Khách hàng</a></li>
+                <li class="breadcrumb-item-modern active">Sửa</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card-modern">
+        <div class="card-header-modern bg-primary text-white">
+            <i class="fas fa-edit me-2"></i>Thông tin khách hàng
+        </div>
+        <div class="card-body-modern">
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="CustomerID" />
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="FullName" class="form-label-modern">
+                            <i class="fas fa-user"></i> Họ và tên <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="FullName" class="form-control-modern" placeholder="Nhập họ tên đầy đủ" required />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNumber" class="form-label-modern">
+                            <i class="fas fa-phone"></i> Số điện thoại <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="PhoneNumber" class="form-control-modern" placeholder="Nhập số điện thoại" required />
+                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Email" class="form-label-modern">
+                            <i class="fas fa-envelope"></i> Email
+                        </label>
+                        <input asp-for="Email" class="form-control-modern" type="email" placeholder="example@email.com" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="IdCardNumber" class="form-label-modern">
+                            <i class="fas fa-id-card"></i> Số CCCD/CMND <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="IdCardNumber" class="form-control-modern" placeholder="Nhập số CCCD/CMND" required />
+                        <span asp-validation-for="IdCardNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Gender" class="form-label-modern">
+                            <i class="fas fa-venus-mars"></i> Giới tính
+                        </label>
+                        <select asp-for="Gender" class="form-control-modern">
+                            <option value="">-- Chọn giới tính --</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                        <span asp-validation-for="Gender" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Dob" class="form-label-modern">
+                            <i class="fas fa-birthday-cake"></i> Ngày sinh
+                        </label>
+                        <input asp-for="Dob" class="form-control-modern" type="date" />
+                        <span asp-validation-for="Dob" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Address" class="form-label-modern">
+                            <i class="fas fa-map-marker-alt"></i> Địa chỉ
+                        </label>
+                        <textarea asp-for="Address" class="form-control-modern" rows="3" placeholder="Nhập địa chỉ"></textarea>
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="IsActivate" class="form-label-modern">
+                            <i class="fas fa-toggle-on"></i> Trạng thái
+                        </label>
+                        <select asp-for="IsActivate" class="form-control-modern">
+                            <option value="ACTIVATE">Hoạt động</option>
+                            <option value="DEACTIVATE">Ngừng hoạt động</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Lưu thay đổi
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Hủy
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

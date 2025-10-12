@@ -1,0 +1,124 @@
+@model IEnumerable<HotelManagement.Models.Employee>
+
+@{
+    ViewData["Title"] = "Quản lý Nhân viên";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-user-tie"></i>
+                Quản lý Nhân viên
+            </h1>
+            <p class="mb-0">Danh sách nhân viên trong hệ thống</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary-modern">
+            <i class="fas fa-plus"></i> Thêm nhân viên
+        </a>
+    </div>
+</div>
+
+<!-- Statistics -->
+@{
+    var totalEmployees = Model.Count();
+    var activeEmployees = Model.Count(e => e.IsActivate == "ACTIVATE");
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="stats-card primary fade-in-up">
+            <div class="stats-icon primary">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stats-title">TỔNG NHÂN VIÊN</div>
+            <div class="stats-value">@totalEmployees</div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon success">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stats-title">ĐANG HOẠT ĐỘNG</div>
+            <div class="stats-value">@activeEmployees</div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Table -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.2s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Nhân viên
+    </div>
+    <div class="card-body-modern">
+        <div class="table-responsive">
+            <table class="table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-hashtag"></i> Mã NV</th>
+                        <th><i class="fas fa-user"></i> Họ tên</th>
+                        <th><i class="fas fa-venus-mars"></i> Giới tính</th>
+                        <th><i class="fas fa-phone"></i> Điện thoại</th>
+                        <th><i class="fas fa-envelope"></i> Email</th>
+                        <th><i class="fas fa-id-card"></i> CMND/CCCD</th>
+                        <th><i class="fas fa-briefcase"></i> Chức vụ</th>
+                        <th><i class="fas fa-info-circle"></i> Trạng thái</th>
+                        <th><i class="fas fa-cog"></i> Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td><strong class="text-primary">@item.EmployeeID</strong></td>
+                            <td><strong>@item.FullName</strong></td>
+                            <td>@item.Gender</td>
+                            <td>@item.PhoneNumber</td>
+                            <td>@item.Email</td>
+                            <td>@item.IdCardNumber</td>
+                            <td>
+                                <span class="badge-modern badge-info-modern">
+                                    @item.Position
+                                </span>
+                            </td>
+                            <td>
+                                @if (item.IsActivate == "ACTIVATE")
+                                {
+                                    <span class="badge-modern badge-success-modern">
+                                        <i class="fas fa-check-circle"></i> Hoạt động
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge-modern badge-danger-modern">
+                                        <i class="fas fa-times-circle"></i> Vô hiệu
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a asp-action="Details" asp-route-id="@item.EmployeeID" 
+                                       class="btn btn-info-modern btn-sm" title="Chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@item.EmployeeID" 
+                                       class="btn btn-warning-modern btn-sm" title="Sửa">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@item.EmployeeID" 
+                                       class="btn btn-danger-modern btn-sm" 
+                                       onclick="return confirm('Xác nhận xóa nhân viên @item.FullName?');"
+                                       title="Xóa">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

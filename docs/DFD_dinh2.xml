@@ -1,0 +1,30 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+actor "Khách hàng" as KH
+
+rectangle "2.1 Tiếp nhận đặt phòng\n(kiểm phòng trống, tạo phiếu, thu cọc)" as P2_1
+rectangle "2.2 Điều chỉnh / Hủy đặt phòng" as P2_2
+rectangle "2.3 Tra cứu phòng trống\n& tính cọc gợi ý" as P2_3
+
+database "Phiếu đặt phòng" as DS_PDP
+database "Danh mục Phòng" as DS_P
+database "Giá thuê phòng" as DS_GTP
+database "Hồ sơ Khách hàng" as DS_KH
+
+KH --> P2_1 : "Thông tin đặt phòng"
+KH --> P2_2 : "Thông tin điều chỉnh đặt phòng"
+KH --> P2_2 : "Thông tin hủy đặt phòng"
+P2_1 --> KH : "Xác nhận đặt phòng"
+
+P2_1 --> P2_3 : "Yêu cầu tra cứu phòng"
+P2_3 --> P2_1 : "Kết quả phòng trống"
+P2_3 --> P2_1 : "Mức cọc gợi ý"
+
+P2_1 --> DS_PDP
+P2_2 --> DS_PDP
+P2_3 --> DS_P
+P2_3 --> DS_GTP
+P2_1 --> DS_KH
+@enduml

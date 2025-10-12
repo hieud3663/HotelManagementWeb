@@ -1,0 +1,35 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+actor "Khách hàng" as KH
+actor "Cổng thanh toán" as PAY
+
+rectangle "5.1 Tạo & cập nhật hóa đơn" as P5_1
+rectangle "5.2 Tính phụ phí muộn\n& thuế VAT 10%" as P5_2
+rectangle "5.3 Thanh toán, đối trừ tiền cọc" as P5_3
+rectangle "5.4 In và gửi hóa đơn" as P5_4
+
+database "Hóa đơn" as DS_INV
+database "Phiếu dịch vụ phòng" as DS_RUS
+database "Phiếu đặt phòng" as DS_PDP
+
+KH --> P5_3 : "Thông tin thanh toán"
+P5_4 --> KH : "Hóa đơn thanh toán"
+
+P5_3 --> PAY : "Yêu cầu thanh toán"
+PAY --> P5_3 : "Trạng thái thanh toán"
+
+P5_1 --> DS_INV
+P5_2 --> DS_INV
+P5_3 --> DS_INV
+P5_4 --> DS_INV
+
+P5_1 --> DS_RUS
+P5_1 --> DS_PDP
+P5_2 --> DS_PDP
+
+P5_1 --> P5_2 : "Số liệu tính thuế/phụ phí"
+P5_2 --> P5_3 : "Số liệu công nợ"
+P5_3 --> P5_4 : "Hóa đơn đã thanh toán"
+@enduml

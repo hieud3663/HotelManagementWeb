@@ -1,0 +1,225 @@
+@model IEnumerable<HotelManagement.Models.RoomUsageService>
+
+@{
+    ViewData["Title"] = "Quản lý Dịch vụ";
+    var reservationFormID = ViewBag.ReservationFormID as string;
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-concierge-bell"></i>
+                Quản lý Dịch vụ Phòng
+            </h1>
+            <p class="mb-0">
+                @if (!string.IsNullOrEmpty(reservationFormID))
+                {
+                    <span>Phiếu đặt phòng: <strong class="text-primary">#@reservationFormID</strong></span>
+                }
+                else
+                {
+                    <span>Quản lý dịch vụ sử dụng trong khách sạn</span>
+                }
+            </p>
+        </div>
+        <button type="button" class="btn btn-primary-modern" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+            <i class="fas fa-plus"></i> Thêm dịch vụ
+        </button>
+    </div>
+</div>
+
+<!-- Services Table -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Dịch vụ đã sử dụng
+    </div>
+    <div class="card-body-modern">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div class="stats-icon info mx-auto mb-4">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h4 class="text-muted mb-3">Chưa có dịch vụ nào</h4>
+                <p class="text-muted">Nhấn nút "Thêm dịch vụ" để thêm dịch vụ mới</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag"></i> Mã DV</th>
+                            <th><i class="fas fa-concierge-bell"></i> Tên dịch vụ</th>
+                            <th><i class="fas fa-tag"></i> Loại dịch vụ</th>
+                            <th><i class="fas fa-sort-numeric-up"></i> Số lượng</th>
+                            <th><i class="fas fa-money-bill"></i> Đơn giá</th>
+                            <th><i class="fas fa-calculator"></i> Thành tiền</th>
+                            <th><i class="fas fa-calendar"></i> Ngày sử dụng</th>
+                            <th><i class="fas fa-cog"></i> Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td><strong class="text-primary">#@item.RoomUsageServiceId</strong></td>
+                                <td><strong>@item.HotelService?.ServiceName</strong></td>
+                                <td>@item.HotelService?.ServiceCategory?.ServiceCategoryName</td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        <i class="fas fa-cubes"></i> @item.Quantity
+                                    </span>
+                                </td>
+                                <td>@item.UnitPrice.ToString("N0") VNĐ</td>
+                                <td>
+                                    <strong class="text-success">
+                                        @((item.Quantity * item.UnitPrice).ToString("N0")) VNĐ
+                                    </strong>
+                                </td>
+                                <td>@item.DateAdded.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-warning-modern btn-sm" 
+                                                onclick="editService('@item.RoomUsageServiceId', @item.Quantity)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form asp-action="DeleteService" method="post" class="d-inline"
+                                              onsubmit="return confirm('Xác nhận xóa dịch vụ này?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.RoomUsageServiceId" />
+                                            <input type="hidden" name="reservationFormID" value="@reservationFormID" />
+                                            <button type="submit" class="btn btn-danger-modern btn-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="5" class="text-end">TỔNG CỘNG:</th>
+                            <th>
+                                <strong class="text-success h5">
+                                    @Model.Sum(x => x.Quantity * x.UnitPrice).ToString("N0") VNĐ
+                                </strong>
+                            </th>
+                            <th colspan="2"></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus"></i> Thêm dịch vụ mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="AddService" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="reservationFormID" value="@reservationFormID" />
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label-modern">Loại dịch vụ</label>
+                        <select id="serviceCategorySelect" class="form-control-modern" required>
+                            <option value="">-- Chọn loại dịch vụ --</option>
+                            @if (ViewBag.ServiceCategories != null)
+                            {
+                                foreach (var category in ViewBag.ServiceCategories)
+                                {
+                                    <option value="@category.ServiceCategoryID">@category.ServiceCategoryName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-modern">Dịch vụ</label>
+                        <select name="hotelServiceId" id="serviceSelect" class="form-control-modern" required>
+                            <option value="">-- Chọn loại dịch vụ trước --</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-modern">Số lượng</label>
+                        <input type="number" name="quantity" class="form-control-modern" min="1" value="1" required />
+                    </div>
+
+                    <div class="alert-modern alert-info-modern">
+                        <i class="fas fa-info-circle"></i>
+                        <small>Đơn giá: <strong id="servicePriceDisplay">---</strong></small>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Đóng
+                    </button>
+                    <button type="submit" class="btn btn-primary-modern">
+                        <i class="fas fa-save"></i> Thêm dịch vụ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#serviceCategorySelect').change(function() {
+                var categoryId = $(this).val();
+                
+                $.ajax({
+                    url: '@Url.Action("GetServicesByCategory", "RoomService")',
+                    type: 'GET',
+                    data: { categoryId: categoryId },
+                    success: function(data) {
+                        var serviceSelect = $('#serviceSelect');
+                        serviceSelect.empty();
+                        serviceSelect.append('<option value="">-- Chọn dịch vụ --</option>');
+                        
+                        $.each(data, function(i, service) {
+                            serviceSelect.append($('<option></option>')
+                                .attr('value', service.hotelServiceId)
+                                .attr('data-price', service.servicePrice)
+                                .text(service.hotelServiceName + ' - ' + service.servicePrice.toLocaleString('vi-VN') + ' VNĐ'));
+                        });
+                    }
+                });
+            });
+
+            $('#serviceSelect').change(function() {
+                var price = $(this).find(':selected').data('price');
+                if (price) {
+                    $('#servicePriceDisplay').text(price.toLocaleString('vi-VN') + ' VNĐ');
+                }
+            });
+        });
+
+        function editService(id, currentQty) {
+            var newQty = prompt('Nhập số lượng mới:', currentQty);
+            if (newQty !== null && newQty > 0) {
+                var form = $('<form method="post" action="@Url.Action("UpdateService")"></form>');
+                form.append('@Html.AntiForgeryToken()');
+                form.append('<input type="hidden" name="id" value="' + id + '" />');
+                form.append('<input type="hidden" name="quantity" value="' + newQty + '" />');
+                form.append('<input type="hidden" name="reservationFormID" value="@reservationFormID" />');
+                $('body').append(form);
+                form.submit();
+            }
+        }
+    </script>
+}

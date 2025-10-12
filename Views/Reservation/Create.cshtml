@@ -1,0 +1,326 @@
+@model HotelManagement.Models.ReservationForm
+
+@{
+    ViewData["Title"] = "Đặt phòng mới";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-calendar-plus"></i>
+        Tạo phiếu đặt phòng
+    </h1>
+    <p>Thêm phiếu đặt phòng mới cho khách hàng</p>
+</div>
+
+<!-- Form -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-edit me-2"></i>Thông tin đặt phòng
+    </div>
+    <div class="card-body-modern">
+        <form id="reservationForm" asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="row g-4">
+                <!-- Customer Selection -->
+                <div class="col-md-12">
+                    <label class="form-label-modern">
+                        <i class="fas fa-user"></i> Khách hàng
+                    </label>
+                    <div class="input-group">
+                        <select asp-for="CustomerID" class="form-control-modern flex-grow-1"
+                            asp-items='(SelectList)ViewData["CustomerID"]' required>
+                            <option value="">-- Chọn khách hàng --</option>
+                        </select>
+                        <button type="button" class="btn btn-success-modern" data-bs-toggle="modal"
+                            data-bs-target="#addCustomerModal">
+                            <i class="fas fa-plus"></i> Thêm mới
+                        </button>
+                    </div>
+                    <span asp-validation-for="CustomerID" class="text-danger"></span>
+                </div>
+
+
+                <!-- Check-in Date -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-sign-in-alt"></i> Ngày giờ nhận phòng
+                    </label>
+                    <input asp-for="CheckInDate" type="datetime-local" class="form-control-modern" required />
+                    <span asp-validation-for="CheckInDate" id="checkInDateError" class="text-danger"></span>
+                </div>
+
+                <!-- Check-out Date -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-sign-out-alt"></i> Ngày giờ trả phòng
+                    </label>
+                    <input asp-for="CheckOutDate" type="datetime-local" class="form-control-modern" required />
+                    <span asp-validation-for="CheckOutDate" id="checkOutDateError" class="text-danger"></span>
+                </div>
+
+                <!-- Room Category -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-th-large"></i> Loại phòng
+                    </label>
+                    <select id="roomCategorySelect" class="form-control-modern"
+                        asp-items='(SelectList)ViewData["RoomCategories"]' required>
+                        <option value="">-- Chọn loại phòng --</option>
+                    </select>
+                </div>
+
+                <!-- Available Rooms -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-door-open"></i> Phòng
+                    </label>
+                    <select asp-for="RoomID" class="form-control-modern" required>
+                        <option value="">-- Chọn loại phòng trước --</option>
+                    </select>
+                    <span asp-validation-for="RoomID" class="text-danger"></span>
+                </div>
+
+                <!-- Price Unit -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-clock"></i> Hình thức thuê
+                    </label>
+                    <select id="priceUnitSelect" class="form-control-modern" required>
+                        <option value="">-- Chọn phòng trước --</option>
+                    </select>
+                </div>
+
+                <!-- Deposit -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-money-bill-wave"></i> Tiền cọc (VNĐ)
+                    </label>
+                    <input asp-for="RoomBookingDeposit" type="number" class="form-control-modern" min="0" step="1000"
+                        required />
+                    <span asp-validation-for="RoomBookingDeposit" class="text-danger"></span>
+                    <small class="text-muted">Gợi ý: <span id="depositSuggestion">---</span></small>
+                </div>
+
+                <!-- Reservation Date (readonly) -->
+                <div class="col-md-6">
+                    <label class="form-label-modern">
+                        <i class="fas fa-calendar"></i> Ngày đặt phòng
+                    </label>
+                    <input type="text" class="form-control-modern" value="@DateTime.Now.ToString("dd/MM/yyyy HH:mm")"
+                        readonly />
+                </div>
+
+                <!-- Notes -->
+                <div class="col-12">
+                    <label class="form-label-modern">
+                        <i class="fas fa-sticky-note"></i> Ghi chú
+                    </label>
+                    <textarea class="form-control-modern" rows="3"
+                        placeholder="Ghi chú về yêu cầu đặc biệt..."></textarea>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3 mt-4">
+                <button type="submit" class="btn btn-primary-modern" >
+                    <i class="fas fa-save"></i> Tạo phiếu đặt phòng
+                </button>
+                <a asp-action="Index" class="btn btn-danger-modern">
+                    <i class="fas fa-times"></i> Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        $(document).ready(function () {
+            
+            $('#reservationForm').on('submit', function (event) {
+                validateReservationForm(event);
+            });
+
+            // Helper function to populate select dropdown
+            function populateSelect(selectElement, options, valueProp, textProp, placeholder) {
+                selectElement.empty();
+                selectElement.append($('<option></option>').attr('value', '').text(placeholder));
+
+                $.each(options, function (i, item) {
+                    selectElement.append($('<option></option>')
+                        .attr('value', item[valueProp])
+                        .text(item[textProp]));
+                });
+            }
+
+            // Load available rooms when room category or dates change
+            function loadAvailableRooms() {
+                var categoryId = $('#roomCategorySelect').val();
+                var checkIn = $('input[name="CheckInDate"]').val();
+                var checkOut = $('input[name="CheckOutDate"]').val();
+
+                if (categoryId && checkIn && checkOut) {
+                    $.ajax({
+                        url: '@Url.Action("GetAvailableRoomsByCatgory", "Room")',
+                        type: 'GET',
+                        data: {
+                            categoryId: categoryId,
+                            checkInDate: checkIn,
+                            checkOutDate: checkOut
+                        },
+                        success: function (data) {
+                            var roomSelect = $('select[name="RoomID"]');
+                            roomSelect.empty();
+                            roomSelect.append('<option value="">-- Chọn phòng --</option>');
+
+                            if (data.length === 0) {
+                                roomSelect.append('<option value="" disabled>Không có phòng trống</option>');
+                            } else {
+                                $.each(data, function (i, room) {
+                                    roomSelect.append($('<option></option>')
+                                        .attr('value', room.roomID)
+                                        .text('Phòng ' + room.roomID));
+                                });
+                            }
+                        },
+                        error: function () {
+                            alert('Lỗi khi tải danh sách phòng!');
+                        }
+                    });
+                } else {
+                    // Reset room dropdown if conditions not met
+                    $('select[name="RoomID"]').empty()
+                        .append('<option value="">-- Chọn loại phòng và ngày trước --</option>');
+                }
+            }
+
+            // Load pricing options when room is selected
+            function loadPricingOptions() {
+                var roomId = $('select[name="RoomID"]').val();
+                var categoryId = $('#roomCategorySelect').val();
+
+                if (roomId && categoryId) {
+                    $.ajax({
+                        url: '@Url.Action("GetPricingOptions", "Room")',
+                        type: 'GET',
+                        data: { categoryId: categoryId },
+                        success: function (data) {
+                            var priceSelect = $('#priceUnitSelect');
+                            priceSelect.empty();
+                            priceSelect.append('<option value="">-- Chọn hình thức --</option>');
+
+                            if (data.length === 0) {
+                                priceSelect.append('<option value="" disabled>Không có giá</option>');
+                            } else {
+                                $.each(data, function (i, price) {
+                                    priceSelect.append($('<option></option>')
+                                        .attr('value', price.priceUnit)
+                                        .attr('data-amount', price.amount)
+                                        .text(price.priceUnit + ' - ' + price.amount.toLocaleString('vi-VN') + ' VNĐ'));
+                                });
+                            }
+                        },
+                        error: function () {
+                            alert('Lỗi khi tải giá phòng!');
+                        }
+                    });
+                } else {
+                    // Reset price dropdown
+                    $('#priceUnitSelect').empty()
+                        .append('<option value="">-- Chọn phòng trước --</option>');
+                }
+            }
+
+            // Calculate deposit suggestion (30% of room price)
+            function calculateDeposit() {
+                var priceUnit = $('#priceUnitSelect option:selected');
+                var amount = priceUnit.data('amount');
+
+                if (amount) {
+                    var deposit = Math.round(amount * 0.3);
+                    $('#depositSuggestion').text(deposit.toLocaleString('vi-VN') + ' VNĐ (30%)');
+                    $('input[name="RoomBookingDeposit"]').val(deposit);
+                } else {
+                    $('#depositSuggestion').text('---');
+                }
+            }
+
+            // Event handlers
+            $('#roomCategorySelect').change(loadAvailableRooms);
+            $('select[name="RoomID"]').change(loadPricingOptions);
+            $('#priceUnitSelect').change(calculateDeposit);
+            $('input[name="CheckInDate"], input[name="CheckOutDate"]').change(loadAvailableRooms);
+        });
+    </script>
+}
+
+<!-- Modal Add Customer -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus"></i> Thêm Khách hàng mới
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="quickCustomerForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-modern">Họ và tên *</label>
+                            <input type="text" name="FullName" class="form-control-modern" required />
+                            <span id="fullNameError" class="text-danger" style="display:none;"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-modern">Giới tính *</label>
+                            <select name="Gender" class="form-select form-control-modern" required>
+                                <option value="MALE">Nam</option>
+                                <option value="FEMALE">Nữ</option>
+                                <option value="OTHER">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-modern">Số điện thoại *</label>
+                            <input type="tel" name="PhoneNumber" class="form-control-modern" pattern="[0-9]{10}"
+                                required />
+                            <span id="phoneNumberError" class="text-danger" style="display:none;"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-modern">Email</label>
+                            <input type="email" name="Email" class="form-control-modern" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-modern">Số CMND/CCCD *</label>
+                            <input type="text" name="IdCardNumber" class="form-control-modern" required />
+                            <span id="cccdError" class="text-danger" style="display:none;"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-modern">Ngày sinh *</label>
+                            <input type="date" name="Dob" class="form-control-modern" required />
+                            <span id="dobError" class="text-danger" style="display:none;"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label-modern">Địa chỉ</label>
+                            <input type="text" name="Address" class="form-control-modern" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success-modern" onclick="saveQuickCustomer()">
+                    <i class="fas fa-save"></i> Lưu khách hàng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+</script>

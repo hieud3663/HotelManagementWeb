@@ -1,0 +1,82 @@
+@model HotelManagement.Models.Customer
+
+@{
+    ViewData["Title"] = "Xóa khách hàng";
+}
+
+<div class="container-modern">
+    <div class="header-modern">
+        <h2 class="text-danger"><i class="fas fa-trash-alt me-2"></i>Xác nhận xóa khách hàng</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb-modern">
+                <li class="breadcrumb-item-modern"><a asp-controller="Dashboard" asp-action="Index">Trang chủ</a></li>
+                <li class="breadcrumb-item-modern"><a asp-action="Index">Khách hàng</a></li>
+                <li class="breadcrumb-item-modern active">Xóa</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="alert-modern alert-danger-modern">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Cảnh báo!</strong> Bạn có chắc chắn muốn xóa khách hàng này? Hành động này không thể hoàn tác.
+    </div>
+
+    <div class="card-modern">
+        <div class="card-header-modern bg-danger text-white">
+            <i class="fas fa-user me-2"></i>Thông tin khách hàng sẽ bị xóa
+        </div>
+        <div class="card-body-modern">
+            <dl class="row">
+                <dt class="col-sm-3">Mã khách hàng:</dt>
+                <dd class="col-sm-9"><strong class="text-danger">@Model.CustomerID</strong></dd>
+
+                <dt class="col-sm-3">Họ và tên:</dt>
+                <dd class="col-sm-9">@Model.FullName</dd>
+
+                <dt class="col-sm-3">Số điện thoại:</dt>
+                <dd class="col-sm-9">@Model.PhoneNumber</dd>
+
+                <dt class="col-sm-3">Email:</dt>
+                <dd class="col-sm-9">@Model.Email</dd>
+
+                <dt class="col-sm-3">Số CCCD/CMND:</dt>
+                <dd class="col-sm-9">@Model.IdCardNumber</dd>
+
+                <dt class="col-sm-3">Giới tính:</dt>
+                <dd class="col-sm-9">@Model.Gender</dd>
+
+                <dt class="col-sm-3">Ngày sinh:</dt>
+                <dd class="col-sm-9">@Model.Dob.ToString("dd/MM/yyyy")</dd>
+
+                <dt class="col-sm-3">Địa chỉ:</dt>
+                <dd class="col-sm-9">@Model.Address</dd>
+
+                <dt class="col-sm-3">Trạng thái:</dt>
+                <dd class="col-sm-9">
+                    @if (Model.IsActivate == "ACTIVATE")
+                    {
+                        <span class="badge bg-success">Hoạt động</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Ngừng hoạt động</span>
+                    }
+                </dd>
+            </dl>
+
+            <form asp-action="Delete" method="post" class="mt-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="CustomerID" />
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Xác nhận xóa
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Hủy
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

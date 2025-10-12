@@ -1,0 +1,25 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+actor "Khách hàng" as KH
+
+rectangle "4.1 Thêm dịch vụ cho phòng" as P4_1
+rectangle "4.2 Cập nhật / Xóa dịch vụ" as P4_2
+rectangle "4.3 Tính phí dịch vụ" as P4_3
+
+database "Phiếu dịch vụ phòng" as DS_RUS
+database "Danh mục Dịch vụ" as DS_DV
+database "Phiếu đặt phòng" as DS_PDP
+
+KH --> P4_1 : "Thông tin yêu cầu dịch vụ"
+P4_1 --> KH : "Xác nhận dịch vụ"
+
+P4_1 --> DS_RUS
+P4_2 --> DS_RUS
+P4_3 --> DS_RUS
+P4_3 --> DS_DV
+P4_1 --> DS_PDP
+
+P4_1 --> P4_3 : "Chi tiết dịch vụ đăng ký"
+@enduml

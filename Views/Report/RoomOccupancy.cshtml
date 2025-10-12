@@ -1,0 +1,231 @@
+@model IEnumerable<HotelManagement.Models.HistoryCheckin>
+
+@{
+    ViewData["Title"] = "Báo cáo Công suất Phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-bed"></i>
+        Báo cáo Công suất Phòng
+    </h1>
+    <p>Phân tích hiệu quả sử dụng phòng khách sạn</p>
+</div>
+
+<!-- Filter Form -->
+<div class="card-modern fade-in-up mb-4">
+    <div class="card-body-modern">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label-modern">Từ ngày</label>
+                <input type="date" name="fromDate" class="form-control-modern" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label-modern">Đến ngày</label>
+                <input type="date" name="toDate" class="form-control-modern" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary-modern w-100">
+                    <i class="fas fa-filter"></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon primary">
+                <i class="fas fa-home"></i>
+            </div>
+            <div class="stats-title">TỔNG SỐ PHÒNG</div>
+            <div class="stats-value">@ViewBag.TotalRooms</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon success">
+                <i class="fas fa-sign-in-alt"></i>
+            </div>
+            <div class="stats-title">LƯỢT CHECK-IN</div>
+            <div class="stats-value">@ViewBag.TotalCheckIns</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card warning fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon warning">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="stats-title">TỶ LỆ SỬ DỤNG</div>
+            <div class="stats-value">@ViewBag.OccupancyRate.ToString("F1")%</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card info fade-in-up" style="animation-delay: 0.4s">
+            <div class="stats-icon info">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stats-title">HIỆU SUẤT</div>
+            <div class="stats-value">
+                @if (ViewBag.OccupancyRate >= 80)
+                {
+                    <span class="text-success">Tốt</span>
+                }
+                else if (ViewBag.OccupancyRate >= 60)
+                {
+                    <span class="text-warning">Khá</span>
+                }
+                else
+                {
+                    <span class="text-danger">Thấp</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Occupancy by Room Type -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-bar me-2"></i>Công suất theo Loại phòng
+            </div>
+            <div class="card-body-modern">
+                @if (ViewBag.OccupancyByRoomType != null && ViewBag.OccupancyByRoomType.Count > 0)
+                {
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Loại phòng</th>
+                                <th>Lượt check-in</th>
+                                <th>Tổng ngày</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ViewBag.OccupancyByRoomType)
+                            {
+                                <tr>
+                                    <td><strong>@item.RoomType</strong></td>
+                                    <td><span class="badge-modern badge-info-modern">@item.CheckIns lượt</span></td>
+                                    <td><strong class="text-success">@item.TotalDays ngày</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted text-center mb-0">Không có dữ liệu</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
+            <div class="card-header-modern">
+                <i class="fas fa-calendar-day me-2"></i>Lượt check-in theo Ngày
+            </div>
+            <div class="card-body-modern">
+                @if (ViewBag.DailyOccupancy != null && ViewBag.DailyOccupancy.Count > 0)
+                {
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th class="text-end">Lượt check-in</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in ViewBag.DailyOccupancy)
+                                {
+                                    <tr>
+                                        <td>@item.Date.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-end">
+                                            <span class="badge-modern badge-success-modern">@item.CheckIns lượt</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center mb-0">Không có dữ liệu</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Check-in List -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Chi tiết Lịch sử Check-in
+    </div>
+    <div class="card-body-modern">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Mã ĐP</th>
+                            <th>Khách hàng</th>
+                            <th>Phòng</th>
+                            <th>Loại phòng</th>
+                            <th>Check-in</th>
+                            <th>Check-out DK</th>
+                            <th>Số ngày</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.OrderBy(h => h.CheckInDate))
+                        {
+                            var checkoutDate = item.ReservationForm?.CheckOutDate ?? DateTime.Now;
+                            var days = (checkoutDate - item.CheckInDate).Days;
+                            
+                            <tr>
+                                <td><strong class="text-primary">#@item.ReservationFormID</strong></td>
+                                <td>@item.ReservationForm?.Customer?.FullName</td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        @item.ReservationForm?.RoomID
+                                    </span>
+                                </td>
+                                <td>@item.ReservationForm?.Room?.RoomCategory?.RoomCategoryName</td>
+                                <td>@item.CheckInDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@checkoutDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <strong class="text-success">@(days > 0 ? days : 1) ngày</strong>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Không có check-in nào trong khoảng thời gian này</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Quay lại
+    </a>
+    <button onclick="window.print()" class="btn btn-info-modern">
+        <i class="fas fa-print"></i> In báo cáo
+    </button>
+</div>

@@ -1,0 +1,14 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+rectangle "1.4.1 Quản lý Loại dịch vụ" as P1_4_1
+rectangle "1.4.2 Quản lý Dịch vụ KS" as P1_4_2
+
+database "Loại dịch vụ" as DS_LDV
+database "Danh mục Dịch vụ" as DS_DV
+
+P1_4_1 --> DS_LDV
+P1_4_2 <-- DS_LDV : "Danh mục loại dịch vụ"
+P1_4_2 --> DS_DV
+@enduml

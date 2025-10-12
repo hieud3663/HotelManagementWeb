@@ -1,0 +1,120 @@
+@{
+    ViewData["Title"] = "Báo cáo & Thống kê";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-chart-bar"></i>
+        Báo cáo & Thống kê
+    </h1>
+    <p>Hệ thống báo cáo và phân tích dữ liệu khách sạn</p>
+</div>
+
+<!-- Report Categories -->
+<div class="row g-4">
+    <!-- Revenue Report -->
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up">
+            <div class="card-body-modern text-center">
+                <div class="stats-icon success mx-auto mb-4">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <h3 class="mb-3">Báo cáo Doanh thu</h3>
+                <p class="text-muted mb-4">
+                    Thống kê doanh thu từ phòng, dịch vụ theo thời gian
+                </p>
+                <a asp-action="Revenue" class="btn btn-success-modern w-100">
+                    <i class="fas fa-chart-line"></i> Xem báo cáo
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Occupancy Report -->
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.1s">
+            <div class="card-body-modern text-center">
+                <div class="stats-icon info mx-auto mb-4">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <h3 class="mb-3">Công suất Phòng</h3>
+                <p class="text-muted mb-4">
+                    Phân tích tỷ lệ sử dụng phòng, hiệu quả kinh doanh
+                </p>
+                <a asp-action="RoomOccupancy" class="btn btn-info-modern w-100">
+                    <i class="fas fa-chart-pie"></i> Xem báo cáo
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Performance Report -->
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.2s">
+            <div class="card-body-modern text-center">
+                <div class="stats-icon warning mx-auto mb-4">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <h3 class="mb-3">Hiệu suất Nhân viên</h3>
+                <p class="text-muted mb-4">
+                    Đánh giá hiệu quả làm việc của từng nhân viên
+                </p>
+                <a asp-action="EmployeePerformance" class="btn btn-warning-modern w-100">
+                    <i class="fas fa-chart-bar"></i> Xem báo cáo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row g-4 mt-4">
+    <div class="col-12">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.3s">
+            <div class="card-header-modern">
+                <i class="fas fa-tachometer-alt me-2"></i>Tổng quan Hôm nay
+            </div>
+            <div class="card-body-modern">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="stats-icon primary mx-auto mb-3">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <h4 class="mb-2">@ViewBag.TodayReservations</h4>
+                            <p class="text-muted mb-0">Đặt phòng hôm nay</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="stats-icon success mx-auto mb-3">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </div>
+                            <h4 class="mb-2">@ViewBag.TodayCheckIns</h4>
+                            <p class="text-muted mb-0">Check-in hôm nay</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="stats-icon warning mx-auto mb-3">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </div>
+                            <h4 class="mb-2">@ViewBag.TodayCheckOuts</h4>
+                            <p class="text-muted mb-0">Check-out hôm nay</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="stats-icon info mx-auto mb-3">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <h4 class="mb-2">@(ViewBag.TodayRevenue?.ToString("N0") ?? "0") đ</h4>
+                            <p class="text-muted mb-0">Doanh thu hôm nay</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

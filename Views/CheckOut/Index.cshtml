@@ -1,0 +1,156 @@
+@model IEnumerable<HotelManagement.Models.HistoryCheckin>
+
+@{
+    ViewData["Title"] = "Check-out";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-sign-out-alt"></i>
+        Quản lý Check-out
+    </h1>
+    <p>Danh sách các phòng đã check-in và chờ khách trả phòng</p>
+</div>
+
+<!-- Main Content -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-clipboard-check me-2"></i>Danh sách Chờ Check-out</span>
+        <span class="badge-modern badge-warning-modern">
+            <i class="fas fa-list"></i> @Model.Count() phòng
+        </span>
+    </div>
+    <div class="card-body-modern">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div class="stats-icon success mx-auto mb-4">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h4 class="text-muted mb-3">Không có phòng chờ check-out</h4>
+                <p class="text-muted">Tất cả các phòng đã được check-out hoàn tất</p>
+                <a href="@Url.Action("Index", "CheckIn")" class="btn btn-primary-modern mt-3">
+                    <i class="fas fa-sign-in-alt"></i> Quản lý Check-in
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag"></i> Mã ĐP</th>
+                            <th><i class="fas fa-user"></i> Khách hàng</th>
+                            <th><i class="fas fa-door-open"></i> Phòng</th>
+                            <th><i class="fas fa-tag"></i> Loại phòng</th>
+                            <th><i class="fas fa-sign-in-alt"></i> Check-in</th>
+                            <th><i class="fas fa-calendar-times"></i> Check-out DK</th>
+                            <th><i class="fas fa-hourglass-half"></i> Số ngày</th>
+                            <th><i class="fas fa-cog"></i> Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var daysDiff = (DateTime.Now - item.CheckInDate).Days;
+                            var isOverdue = DateTime.Now > item.ReservationForm!.CheckOutDate;
+                            
+                            <tr>
+                                <td>
+                                    <strong class="text-primary">#@item.ReservationFormID</strong>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>@item.ReservationForm?.Customer?.FullName</strong>
+                                        <br />
+                                        <small class="text-muted">
+                                            <i class="fas fa-phone"></i> @item.ReservationForm?.Customer?.PhoneNumber
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-warning-modern">
+                                        <i class="fas fa-bed"></i> @item.ReservationForm?.RoomID
+                                    </span>
+                                </td>
+                                <td>@item.ReservationForm?.Room?.RoomCategory?.RoomCategoryName</td>
+                                <td>
+                                    <div>
+                                        <strong>@item.CheckInDate.ToString("dd/MM/yyyy")</strong>
+                                        <br />
+                                        <small class="text-muted">@item.CheckInDate.ToString("HH:mm")</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>@item.ReservationForm?.CheckOutDate.ToString("dd/MM/yyyy")</strong>
+                                        <br />
+                                        <small class="text-muted">@item.ReservationForm?.CheckOutDate.ToString("HH:mm")</small>
+                                        @if (isOverdue)
+                                        {
+                                            <br />
+                                            <span class="badge-modern badge-danger-modern">
+                                                <i class="fas fa-exclamation-triangle"></i> Quá hạn!
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        <i class="fas fa-calendar-day"></i> @daysDiff ngày
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="Details" asp-route-reservationFormID="@item.ReservationFormID" 
+                                           class="btn btn-warning-modern btn-sm">
+                                            <i class="fas fa-cash-register"></i> Check-out
+                                        </a>
+                                        <a asp-controller="RoomService" asp-action="Index" asp-route-reservationFormID="@item.ReservationFormID" 
+                                           class="btn btn-info-modern btn-sm">
+                                            <i class="fas fa-concierge-bell"></i> Dịch vụ
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Statistics -->
+@if (Model.Any())
+{
+    var overdueCount = Model.Count(x => DateTime.Now > x.ReservationForm!.CheckOutDate);
+    var normalCount = Model.Count() - overdueCount;
+    
+    <div class="row g-4 mt-3">
+        <div class="col-md-6">
+            <div class="card-modern fade-in-up" style="animation-delay: 0.2s">
+                <div class="card-body-modern text-center">
+                    <div class="stats-icon success mx-auto">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="stats-title mt-3">ĐÚNG HẠN</div>
+                    <div class="stats-value text-success">@normalCount phòng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card-modern fade-in-up" style="animation-delay: 0.3s">
+                <div class="card-body-modern text-center">
+                    <div class="stats-icon danger mx-auto">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stats-title mt-3">QUÁ HẠN</div>
+                    <div class="stats-value text-danger">@overdueCount phòng</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

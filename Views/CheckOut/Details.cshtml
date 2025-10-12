@@ -1,0 +1,219 @@
+@model HotelManagement.Models.ReservationForm
+
+@{
+    ViewData["Title"] = "Chi tiết Check-out";
+    var checkin = Model.HistoryCheckin;
+    var reservation = Model;
+    var services = Model.RoomUsageServices;
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-cash-register"></i>
+        Thanh toán Check-out
+    </h1>
+    <p>Phiếu đặt phòng #@reservation.ReservationFormID</p>
+</div>
+
+<div class="row g-4">
+    <!-- Customer & Room Info -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern">
+                <i class="fas fa-user me-2"></i>Thông tin Khách hàng
+            </div>
+            <div class="card-body-modern">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th width="40%"><i class="fas fa-user"></i> Họ tên:</th>
+                        <td><strong>@reservation.Customer?.FullName</strong></td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-phone"></i> Điện thoại:</th>
+                        <td>@reservation.Customer?.PhoneNumber</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-id-card"></i> CMND/CCCD:</th>
+                        <td>@reservation.Customer?.IdCardNumber</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-envelope"></i> Email:</th>
+                        <td>@reservation.Customer?.Email</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.1s">
+            <div class="card-header-modern">
+                <i class="fas fa-door-open me-2"></i>Thông tin Phòng
+            </div>
+            <div class="card-body-modern">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th width="40%"><i class="fas fa-bed"></i> Số phòng:</th>
+                        <td><span class="badge-modern badge-info-modern">@reservation.RoomID</span></td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-tag"></i> Loại phòng:</th>
+                        <td>@reservation.Room?.RoomCategory?.RoomCategoryName</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-sign-in-alt"></i> Check-in:</th>
+                        <td>@(checkin?.CheckInDate.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-sign-out-alt"></i> Check-out DK:</th>
+                        <td>@reservation.CheckOutDate.ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Used -->
+    <div class="col-12">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.2s">
+            <div class="card-header-modern">
+                <i class="fas fa-concierge-bell me-2"></i>Dịch vụ đã sử dụng
+            </div>
+            <div class="card-body-modern">
+                @if (services != null && services.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Dịch vụ</th>
+                                    <th>Loại</th>
+                                    <th>Số lượng</th>
+                                    <th>Đơn giá</th>
+                                    <th class="text-end">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (services != null)
+                                {
+                                    foreach (var service in services)
+                                    {
+                                        var servicePrice = service.HotelService?.ServicePrice ?? 0;
+                                        var totalPrice = service.Quantity * servicePrice;
+                                        
+                                        <tr>
+                                            <td><strong>@(service.HotelService?.ServiceName ?? "N/A")</strong></td>
+                                            <td>@(service.HotelService?.ServiceCategory?.ServiceCategoryName ?? "N/A")</td>
+                                            <td><span class="badge-modern badge-info-modern">@service.Quantity</span></td>
+                                            <td>@servicePrice.ToString("N0") VNĐ</td>
+                                            <td class="text-end">
+                                                <strong class="text-success">
+                                                    @totalPrice.ToString("N0") VNĐ
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>Không có dịch vụ nào được sử dụng</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Summary -->
+    <div class="col-lg-8">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.3s">
+            <div class="card-header-modern">
+                <i class="fas fa-file-invoice-dollar me-2"></i>Chi tiết Hóa đơn
+            </div>
+            <div class="card-body-modern">
+                <table class="table table-borderless">
+                    <tr>
+                        <th>Tiền phòng:</th>
+                        <td class="text-end"><strong>@ViewBag.RoomCharge.ToString("N0") VNĐ</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Tiền dịch vụ:</th>
+                        <td class="text-end"><strong>@ViewBag.ServiceCharge.ToString("N0") VNĐ</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Phụ phí trả muộn:</th>
+                        <td class="text-end"><strong class="text-danger">@ViewBag.LateFee.ToString("N0") VNĐ</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Tổng trước thuế:</th>
+                        <td class="text-end"><strong>@ViewBag.SubTotal.ToString("N0") VNĐ</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Thuế VAT (10%):</th>
+                        <td class="text-end"><strong>@ViewBag.TaxAmount.ToString("N0") VNĐ</strong></td>
+                    </tr>
+                    <tr class="border-top">
+                        <th class="h5">Tổng cộng:</th>
+                        <td class="text-end">
+                            <h4 class="text-primary mb-0">@ViewBag.TotalAmount.ToString("N0") VNĐ</h4>
+                        </td>
+                    </tr>
+                    <tr class="border-top">
+                        <th>Tiền cọc đã đặt:</th>
+                        <td class="text-end"><strong class="text-success">-@reservation.RoomBookingDeposit.ToString("N0") VNĐ</strong></td>
+                    </tr>
+                    <tr class="bg-light">
+                        <th class="h4 text-danger">Còn phải thanh toán:</th>
+                        <td class="text-end">
+                            <h3 class="text-danger mb-0">@ViewBag.AmountDue.ToString("N0") VNĐ</h3>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Form -->
+    <div class="col-lg-4">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.4s">
+            <div class="card-header-modern bg-success text-white">
+                <i class="fas fa-money-bill-wave me-2"></i>Thanh toán
+            </div>
+            <div class="card-body-modern">
+                <form asp-action="ProcessCheckOut" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="reservationFormID" value="@reservation.ReservationFormID" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label-modern">Phương thức thanh toán</label>
+                        <select name="paymentMethod" class="form-control-modern" required>
+                            <option value="CASH">Tiền mặt</option>
+                            <option value="CARD">Thẻ tín dụng</option>
+                            <option value="TRANSFER">Chuyển khoản</option>
+                        </select>
+                    </div>
+
+                    <div class="alert-modern alert-info-modern mb-3">
+                        <i class="fas fa-info-circle"></i>
+                        <small>Xác nhận thanh toán sẽ hoàn tất quy trình check-out</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-success-modern w-100 py-3" 
+                            onclick="return confirm('Xác nhận thanh toán @ViewBag.AmountDue.ToString("N0") VNĐ?');">
+                        <i class="fas fa-check-circle"></i> Xác nhận thanh toán
+                    </button>
+                </form>
+
+                <a asp-action="Index" class="btn btn-danger-modern w-100 mt-2">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,63 @@
+@model HotelManagement.Models.Room
+
+@{
+    ViewData["Title"] = "Xóa Phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1 class="text-danger">
+        <i class="fas fa-trash-alt"></i>
+        Xóa Phòng
+    </h1>
+    <p>Xác nhận xóa phòng khỏi hệ thống</p>
+</div>
+
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern bg-danger text-white">
+        <i class="fas fa-exclamation-triangle me-2"></i>Cảnh báo: Hành động này không thể hoàn tác!
+    </div>
+    <div class="card-body-modern">
+        <div class="alert-modern alert-danger-modern mb-4">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>Bạn có chắc chắn muốn xóa phòng này không?</span>
+        </div>
+
+        <table class="table table-borderless">
+            <tr>
+                <th width="30%"><i class="fas fa-hashtag"></i> Mã phòng:</th>
+                <td><strong class="text-danger">@Model.RoomID</strong></td>
+            </tr>
+            <tr>
+                <th><i class="fas fa-tag"></i> Loại phòng:</th>
+                <td>@Model.RoomCategory?.RoomCategoryName</td>
+            </tr>
+            <tr>
+                <th><i class="fas fa-bed"></i> Số giường:</th>
+                <td>@Model.RoomCategory?.NumberOfBed giường</td>
+            </tr>
+            <tr>
+                <th><i class="fas fa-info-circle"></i> Trạng thái:</th>
+                <td>@Model.RoomStatus</td>
+            </tr>
+            <tr>
+                <th><i class="fas fa-calendar"></i> Ngày tạo:</th>
+                <td>@Model.DateOfCreation.ToString("dd/MM/yyyy")</td>
+            </tr>
+        </table>
+
+        <form asp-action="Delete" method="post" class="mt-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="RoomID" />
+            
+            <div class="d-flex gap-3">
+                <button type="submit" class="btn btn-danger-modern">
+                    <i class="fas fa-trash"></i> Xác nhận xóa
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>

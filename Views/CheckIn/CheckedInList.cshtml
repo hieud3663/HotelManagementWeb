@@ -1,0 +1,168 @@
+@model IEnumerable<HotelManagement.Models.HistoryCheckin>
+
+@{
+    ViewData["Title"] = "Danh sách đã Check-in";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-clipboard-check"></i>
+        Danh sách Phòng đã Check-in
+    </h1>
+    <p>Quản lý các phòng đang được sử dụng</p>
+</div>
+
+<!-- Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon primary">
+                <i class="fas fa-door-open"></i>
+            </div>
+            <div class="stats-title">PHÒNG ĐANG SỬ DỤNG</div>
+            <div class="stats-value">@Model.Count()</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon success">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stats-title">CHECK-IN HÔM NAY</div>
+            <div class="stats-value">@Model.Count(h => h.CheckInDate.Date == DateTime.Today)</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card warning fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon warning">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stats-title">QUÁ HẠN TRẢ PHÒNG</div>
+            <div class="stats-value">
+                @Model.Count(h => h.ReservationForm != null && h.ReservationForm.CheckOutDate < DateTime.Now)
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Checked-In List -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.4s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Phòng đang sử dụng
+    </div>
+    <div class="card-body-modern">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table-modern">
+                    <thead>
+                        <tr>
+                            <th>Mã ĐP</th>
+                            <th>Phòng</th>
+                            <th>Loại phòng</th>
+                            <th>Khách hàng</th>
+                            <th>Check-in</th>
+                            <th>Check-out dự kiến</th>
+                            <th>Thời gian ở</th>
+                            <th>NV Check-in</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var daysDiff = (DateTime.Now - item.CheckInDate).Days;
+                            var isOverdue = item.ReservationForm != null && item.ReservationForm.CheckOutDate < DateTime.Now;
+                            
+                            <tr>
+                                <td>
+                                    <strong class="text-primary">#@item.ReservationFormID</strong>
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        @item.ReservationForm?.RoomID
+                                    </span>
+                                </td>
+                                <td>@item.ReservationForm?.Room?.RoomCategory?.RoomCategoryName</td>
+                                <td>
+                                    <div>
+                                        <strong>@item.ReservationForm?.Customer?.FullName</strong>
+                                    </div>
+                                    <small class="text-muted">@item.ReservationForm?.Customer?.PhoneNumber</small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>@item.CheckInDate.ToString("dd/MM/yyyy")</strong>
+                                    </div>
+                                    <small class="text-muted">@item.CheckInDate.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>@item.ReservationForm?.CheckOutDate.ToString("dd/MM/yyyy")</strong>
+                                    </div>
+                                    <small class="text-muted">@item.ReservationForm?.CheckOutDate.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    @if (daysDiff == 0)
+                                    {
+                                        var hours = (DateTime.Now - item.CheckInDate).Hours;
+                                        <span class="badge-modern badge-success-modern">@hours giờ</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-modern badge-info-modern">@daysDiff ngày</span>
+                                    }
+                                </td>
+                                <td>@item.Employee?.FullName</td>
+                                <td>
+                                    @if (isOverdue)
+                                    {
+                                        <span class="badge-modern badge-danger-modern">
+                                            <i class="fas fa-exclamation-circle"></i> Quá hạn
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-modern badge-success-modern">
+                                            <i class="fas fa-check-circle"></i> Bình thường
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group-modern">
+                                        <a href="@Url.Action("Index", "RoomService", new { reservationFormID = item.ReservationFormID })" 
+                                           class="btn btn-sm btn-info-modern" title="Dịch vụ">
+                                            <i class="fas fa-concierge-bell"></i>
+                                        </a>
+                                        <a href="@Url.Action("Details", "CheckOut", new { reservationFormID = item.ReservationFormID })" 
+                                           class="btn btn-sm btn-success-modern" title="Check-out">
+                                            <i class="fas fa-sign-out-alt"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted mb-0">Hiện không có phòng nào đang được sử dụng</p>
+                <a href="@Url.Action("Index", "CheckIn")" class="btn btn-primary-modern mt-3">
+                    <i class="fas fa-sign-in-alt"></i> Đi tới Check-in
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="@Url.Action("Index", "Dashboard")" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Quay lại Dashboard
+    </a>
+</div>

@@ -1,0 +1,151 @@
+@model IEnumerable<HotelManagement.Models.Room>
+
+@{
+    ViewData["Title"] = "Quản lý Phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-bed"></i>
+                Quản lý Phòng
+            </h1>
+            <p class="mb-0">Quản lý thông tin các phòng trong khách sạn</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary-modern">
+            <i class="fas fa-plus"></i> Thêm phòng mới
+        </a>
+    </div>
+</div>
+
+<!-- Statistics -->
+@{
+    var availableRooms = Model.Count(r => r.RoomStatus == "AVAILABLE");
+    var onUseRooms = Model.Count(r => r.RoomStatus == "ON_USE");
+    var reservedRooms = Model.Count(r => r.RoomStatus == "RESERVED");
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon primary">
+                <i class="fas fa-home"></i>
+            </div>
+            <div class="stats-title">TỔNG PHÒNG</div>
+            <div class="stats-value">@Model.Count()</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon success">
+                <i class="fas fa-door-open"></i>
+            </div>
+            <div class="stats-title">PHÒNG TRỐNG</div>
+            <div class="stats-value">@availableRooms</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card warning fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon warning">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stats-title">ĐANG SỬ DỤNG</div>
+            <div class="stats-value">@onUseRooms</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card info fade-in-up" style="animation-delay: 0.4s">
+            <div class="stats-icon info">
+                <i class="fas fa-bookmark"></i>
+            </div>
+            <div class="stats-title">ĐÃ ĐẶT</div>
+            <div class="stats-value">@reservedRooms</div>
+        </div>
+    </div>
+</div>
+
+<!-- Room Table -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Phòng
+    </div>
+    <div class="card-body-modern">
+        <div class="table-responsive">
+            <table class="table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-hashtag"></i> Mã phòng</th>
+                        <th><i class="fas fa-tag"></i> Loại phòng</th>
+                        <th><i class="fas fa-bed"></i> Số giường</th>
+                        <th><i class="fas fa-info-circle"></i> Trạng thái</th>
+                        <th><i class="fas fa-calendar"></i> Ngày tạo</th>
+                        <th><i class="fas fa-cog"></i> Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong class="text-primary">@item.RoomID</strong>
+                            </td>
+                            <td>
+                                <strong>@item.RoomCategory?.RoomCategoryName</strong>
+                            </td>
+                            <td>
+                                <span class="badge-modern badge-info-modern">
+                                    <i class="fas fa-bed"></i> @item.RoomCategory?.NumberOfBed giường
+                                </span>
+                            </td>
+                            <td>
+                                @if (item.RoomStatus == "AVAILABLE")
+                                {
+                                    <span class="badge-modern badge-success-modern">
+                                        <i class="fas fa-check-circle"></i> Trống
+                                    </span>
+                                }
+                                else if (item.RoomStatus == "ON_USE")
+                                {
+                                    <span class="badge-modern badge-warning-modern">
+                                        <i class="fas fa-user-check"></i> Đang sử dụng
+                                    </span>
+                                }
+                                else if (item.RoomStatus == "RESERVED")
+                                {
+                                    <span class="badge-modern badge-info-modern">
+                                        <i class="fas fa-bookmark"></i> Đã đặt
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge-modern badge-danger-modern">
+                                        <i class="fas fa-exclamation-circle"></i> @item.RoomStatus
+                                    </span>
+                                }
+                            </td>
+                            <td>@item.DateOfCreation.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a asp-action="Details" asp-route-id="@item.RoomID" class="btn btn-info-modern btn-sm" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@item.RoomID" class="btn btn-warning-modern btn-sm" title="Chỉnh sửa">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@item.RoomID" 
+                                       class="btn btn-danger-modern btn-sm" 
+                                       onclick="return confirm('Bạn có chắc muốn xóa phòng @item.RoomID?');"
+                                       title="Xóa">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,114 @@
+@model HotelManagement.Models.Employee
+
+@{
+    ViewData["Title"] = "Thêm Nhân viên";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-user-plus"></i>
+        Thêm Nhân viên mới
+    </h1>
+    <p>Tạo hồ sơ nhân viên mới trong hệ thống</p>
+</div>
+
+<!-- Create Form -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern">
+                <i class="fas fa-user-tie me-2"></i>Thông tin Nhân viên
+            </div>
+            <div class="card-body-modern">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="FullName" class="form-label-modern"></label>
+                            <input asp-for="FullName" class="form-control-modern" placeholder="Nhập họ và tên" />
+                            <span asp-validation-for="FullName" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Gender" class="form-label-modern"></label>
+                            <select asp-for="Gender" class="form-select form-control-modern">
+                                <option value="MALE">Nam</option>
+                                <option value="FEMALE">Nữ</option>
+                                <option value="OTHER">Khác</option>
+                            </select>
+                            <span asp-validation-for="Gender" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PhoneNumber" class="form-label-modern"></label>
+                            <input asp-for="PhoneNumber" class="form-control-modern" placeholder="Nhập số điện thoại" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Email" class="form-label-modern"></label>
+                            <input asp-for="Email" type="email" class="form-control-modern" placeholder="Nhập email" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="IdCardNumber" class="form-label-modern"></label>
+                            <input asp-for="IdCardNumber" class="form-control-modern" placeholder="Nhập số CMND/CCCD" />
+                            <span asp-validation-for="IdCardNumber" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Dob" class="form-label-modern"></label>
+                            <input asp-for="Dob" type="date" class="form-control-modern" />
+                            <span asp-validation-for="Dob" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Position" class="form-label-modern"></label>
+                            <select asp-for="Position" class="form-select form-control-modern">
+                                <option value="RECEPTIONIST">Lễ tân</option>
+                                <option value="MANAGER">Quản lý</option>
+                                <option value="CLEANER">Nhân viên vệ sinh</option>
+                                <option value="SECURITY">Bảo vệ</option>
+                                <option value="ACCOUNTANT">Kế toán</option>
+                            </select>
+                            <span asp-validation-for="Position" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Address" class="form-label-modern"></label>
+                            <input asp-for="Address" class="form-control-modern" placeholder="Nhập địa chỉ" />
+                            <span asp-validation-for="Address" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Lưu ý:</strong> Mã nhân viên sẽ được tạo tự động theo định dạng EMP-XXXXXX
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success-modern">
+                            <i class="fas fa-save"></i> Lưu nhân viên
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Hủy
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

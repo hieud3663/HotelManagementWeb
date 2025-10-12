@@ -1,0 +1,113 @@
+@model IEnumerable<HotelManagement.Models.Invoice>
+
+@{
+    ViewData["Title"] = "Quản lý Hóa đơn";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-file-invoice-dollar"></i>
+        Quản lý Hóa đơn
+    </h1>
+    <p>Danh sách các hóa đơn thanh toán trong hệ thống</p>
+</div>
+
+<!-- Statistics -->
+@{
+    var totalInvoices = Model.Count();
+    var totalRevenue = Model.Sum(i => i.NetDue ?? 0);
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6 col-md-6">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon primary">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <div class="stats-title">TỔNG HÓA ĐƠN</div>
+            <div class="stats-value">@totalInvoices</div>
+        </div>
+    </div>
+    <div class="col-lg-6 col-md-6">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon success">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stats-title">TỔNG DOANH THU</div>
+            <div class="stats-value" style="font-size: 1.3rem">@totalRevenue.ToString("N0") đ</div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice Table -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Hóa đơn
+    </div>
+    <div class="card-body-modern">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div class="stats-icon info mx-auto mb-4">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h4 class="text-muted mb-3">Chưa có hóa đơn nào</h4>
+                <p class="text-muted">Các hóa đơn sẽ được tạo tự động sau khi check-out</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag"></i> Mã HĐ</th>
+                            <th><i class="fas fa-receipt"></i> Mã ĐP</th>
+                            <th><i class="fas fa-user"></i> Khách hàng</th>
+                            <th><i class="fas fa-calendar"></i> Ngày tạo</th>
+                            <th><i class="fas fa-bed"></i> Tiền phòng</th>
+                            <th><i class="fas fa-concierge-bell"></i> Tiền DV</th>
+                            <th><i class="fas fa-calculator"></i> Tổng tiền</th>
+                            <th><i class="fas fa-info-circle"></i> Trạng thái</th>
+                            <th><i class="fas fa-cog"></i> Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.OrderByDescending(i => i.InvoiceDate))
+                        {
+                            <tr>
+                                <td><strong class="text-primary">#@item.InvoiceID</strong></td>
+                                <td><strong>@item.ReservationFormID</strong></td>
+                                <td>@item.ReservationForm?.Customer?.FullName</td>
+                                <td>@item.InvoiceDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@item.RoomCharge.ToString("N0") đ</td>
+                                <td>@item.ServicesCharge.ToString("N0") đ</td>
+                                <td>
+                                    <strong class="text-success">@(item.NetDue ?? 0).ToString("N0") đ</strong>
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-success-modern">
+                                        <i class="fas fa-check-circle"></i> Đã thanh toán
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="Details" asp-route-id="@item.InvoiceID" 
+                                           class="btn btn-info-modern btn-sm" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-action="Print" asp-route-id="@item.InvoiceID" 
+                                           class="btn btn-warning-modern btn-sm" title="In hóa đơn" target="_blank">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

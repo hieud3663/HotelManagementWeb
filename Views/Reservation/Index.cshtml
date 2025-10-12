@@ -1,0 +1,119 @@
+@model IEnumerable<HotelManagement.Models.ReservationForm>
+
+@{
+    ViewData["Title"] = "Quản lý Đặt phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-calendar-check"></i>
+                Quản lý Đặt phòng
+            </h1>
+            <p class="mb-0">Quản lý các phiếu đặt phòng của khách hàng</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary-modern">
+            <i class="fas fa-plus"></i> Đặt phòng mới
+        </a>
+    </div>
+</div>
+
+<!-- Statistics -->
+@{
+    var totalReservations = Model.Count();
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="stats-card primary fade-in-up">
+            <div class="stats-icon primary">
+                <i class="fas fa-list-alt"></i>
+            </div>
+            <div class="stats-title">TỔNG ĐẶT PHÒNG</div>
+            <div class="stats-value">@totalReservations</div>
+        </div>
+    </div>
+</div>
+
+<!-- Reservation Table -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Đặt phòng
+    </div>
+    <div class="card-body-modern">
+        <div class="table-responsive">
+            <table class="table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-hashtag"></i> Mã ĐP</th>
+                        <th><i class="fas fa-user"></i> Khách hàng</th>
+                        <th><i class="fas fa-door-open"></i> Phòng</th>
+                        <th><i class="fas fa-tag"></i> Loại phòng</th>
+                        <th><i class="fas fa-sign-in-alt"></i> Check-in</th>
+                        <th><i class="fas fa-sign-out-alt"></i> Check-out</th>
+                        <th><i class="fas fa-money-bill"></i> Tiền cọc</th>
+                        <th><i class="fas fa-user-tie"></i> NV xử lý</th>
+                        <th><i class="fas fa-cog"></i> Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong class="text-primary">#@item.ReservationFormID</strong>
+                            </td>
+                            <td>
+                                <strong>@item.Customer?.FullName</strong>
+                            </td>
+                            <td>
+                                <span class="badge-modern badge-info-modern">
+                                    <i class="fas fa-bed"></i> @item.RoomID
+                                </span>
+                            </td>
+                            <td>@item.Room?.RoomCategory?.RoomCategoryName</td>
+                            <td>
+                                <div>
+                                    <strong>@item.CheckInDate.ToString("dd/MM/yyyy")</strong>
+                                    <br />
+                                    <small class="text-muted">@item.CheckInDate.ToString("HH:mm")</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <strong>@item.CheckOutDate.ToString("dd/MM/yyyy")</strong>
+                                    <br />
+                                    <small class="text-muted">@item.CheckOutDate.ToString("HH:mm")</small>
+                                </div>
+                            </td>
+                            <td>
+                                <strong class="text-success">@item.RoomBookingDeposit.ToString("N0")</strong>
+                                <small class="text-muted d-block">VNĐ</small>
+                            </td>
+                            <td>
+                                <small class="text-muted">@item.Employee?.FullName</small>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a asp-action="Details" asp-route-id="@item.ReservationFormID" 
+                                       class="btn btn-info-modern btn-sm" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <form asp-action="Cancel" asp-route-id="@item.ReservationFormID" method="post" class="d-inline" 
+                                          onsubmit="return confirm('Bạn có chắc muốn hủy đặt phòng này?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger-modern btn-sm" title="Hủy đặt phòng">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

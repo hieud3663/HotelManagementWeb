@@ -1,0 +1,136 @@
+@model HotelManagement.Models.Room
+
+@{
+    ViewData["Title"] = "Chi tiết Phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-door-open"></i>
+        Chi tiết Phòng
+    </h1>
+    <p>Thông tin chi tiết về phòng @Model.RoomID</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern">
+                <i class="fas fa-info-circle me-2"></i>Thông tin Phòng
+            </div>
+            <div class="card-body-modern">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th width="40%"><i class="fas fa-hashtag"></i> Mã phòng:</th>
+                        <td><strong class="text-primary">@Model.RoomID</strong></td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-tag"></i> Loại phòng:</th>
+                        <td><strong>@Model.RoomCategory?.RoomCategoryName</strong></td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-bed"></i> Số giường:</th>
+                        <td>@Model.RoomCategory?.NumberOfBed giường</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-info-circle"></i> Trạng thái:</th>
+                        <td>
+                            @if (Model.RoomStatus == "AVAILABLE")
+                            {
+                                <span class="badge-modern badge-success-modern">
+                                    <i class="fas fa-check-circle"></i> Phòng trống
+                                </span>
+                            }
+                            else if (Model.RoomStatus == "ON_USE")
+                            {
+                                <span class="badge-modern badge-warning-modern">
+                                    <i class="fas fa-user-check"></i> Đang sử dụng
+                                </span>
+                            }
+                            else if (Model.RoomStatus == "RESERVED")
+                            {
+                                <span class="badge-modern badge-info-modern">
+                                    <i class="fas fa-bookmark"></i> Đã đặt
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-calendar"></i> Ngày tạo:</th>
+                        <td>@Model.DateOfCreation.ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-toggle-on"></i> Trạng thái hoạt động:</th>
+                        <td>
+                            @if (Model.IsActivate == "ACTIVATE")
+                            {
+                                <span class="badge-modern badge-success-modern">Đang hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="badge-modern badge-danger-modern">Vô hiệu hóa</span>
+                            }
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.1s">
+            <div class="card-header-modern">
+                <i class="fas fa-dollar-sign me-2"></i>Bảng giá
+            </div>
+            <div class="card-body-modern">
+                @if (ViewBag.Pricings != null && ViewBag.Pricings.Count > 0)
+                {
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Hình thức</th>
+                                <th class="text-end">Giá</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var price in ViewBag.Pricings)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>
+                                            @if (price.PriceUnit == "DAY")
+                                            {
+                                                <i class="fas fa-sun"></i> <span>Theo ngày</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-clock"></i> <span>Theo giờ</span>
+                                            }
+                                        </strong>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-success">@price.Amount.ToString("N0") VNĐ</strong>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted text-center mb-0">Chưa có bảng giá</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Edit" asp-route-id="@Model.RoomID" class="btn btn-warning-modern">
+        <i class="fas fa-edit"></i> Chỉnh sửa
+    </a>
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Quay lại
+    </a>
+</div>

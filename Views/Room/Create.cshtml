@@ -1,0 +1,61 @@
+@model HotelManagement.Models.Room
+
+@{
+    ViewData["Title"] = "Thêm Phòng mới";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-plus-circle"></i>
+        Thêm Phòng mới
+    </h1>
+    <p>Thêm phòng mới vào hệ thống quản lý</p>
+</div>
+
+<!-- Create Form -->
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern">
+                <i class="fas fa-bed me-2"></i>Thông tin Phòng
+            </div>
+            <div class="card-body-modern">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="mb-4">
+                        <label asp-for="RoomCategoryID" class="form-label-modern">
+                            <i class="fas fa-layer-group"></i> Loại Phòng <span class="text-danger">*</span>
+                        </label>
+                        <select asp-for="RoomCategoryID" class="form-select form-control-modern" asp-items='(SelectList)ViewData["RoomCategoryID"]' required>
+                            <option value="">-- Chọn loại phòng --</option>
+                        </select>
+                        <span asp-validation-for="RoomCategoryID" class="text-danger"></span>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Lưu ý:</strong> 
+                        <ul class="mb-0 mt-2">
+                            <li>Trạng thái phòng mặc định là "AVAILABLE" (Trống)</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success-modern">
+                            <i class="fas fa-save"></i> Lưu phòng
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Hủy
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

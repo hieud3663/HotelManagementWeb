@@ -1,0 +1,106 @@
+@model HotelManagement.Models.Employee
+
+@{
+    ViewData["Title"] = "Xóa Nhân viên";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-user-times"></i>
+        Xóa Nhân viên
+    </h1>
+    <p>Xác nhận xóa nhân viên khỏi hệ thống</p>
+</div>
+
+<!-- Delete Confirmation -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern bg-danger text-white">
+                <i class="fas fa-exclamation-triangle me-2"></i>Xác nhận xóa
+            </div>
+            <div class="card-body-modern">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Cảnh báo!</strong> Bạn có chắc chắn muốn xóa nhân viên này không?
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Mã nhân viên</label>
+                            <div class="info-value">@Model.EmployeeID</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Họ và tên</label>
+                            <div class="info-value">@Model.FullName</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Vị trí</label>
+                            <div class="info-value">
+                                @{
+                                    var positionText = Model.Position switch
+                                    {
+                                        "RECEPTIONIST" => "Lễ tân",
+                                        "MANAGER" => "Quản lý",
+                                        "CLEANER" => "Nhân viên vệ sinh",
+                                        "SECURITY" => "Bảo vệ",
+                                        "ACCOUNTANT" => "Kế toán",
+                                        _ => Model.Position
+                                    };
+                                }
+                                @positionText
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">Số điện thoại</label>
+                            <div class="info-value">@Model.PhoneNumber</div>
+                        </div>
+                    </div>
+                </div>
+
+                <form asp-action="Delete" method="post" class="mt-4">
+                    <input type="hidden" asp-for="EmployeeID" />
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Xác nhận xóa
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Hủy
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-group {
+    margin-bottom: 1rem;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: #212529;
+    font-weight: 500;
+}
+</style>

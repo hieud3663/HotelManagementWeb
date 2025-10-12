@@ -1,0 +1,75 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+actor "Khách hàng" as KH
+actor "Cổng thanh toán" as PAY
+
+rectangle "1. Quản lý\nDanh mục nền" as P1
+rectangle "2. Quản lý\nĐặt phòng" as P2
+rectangle "3. Quy trình\nCheck-in / Check-out" as P3
+rectangle "4. Quản lý\nDịch vụ sử dụng" as P4
+rectangle "5. Quản lý\nHóa đơn & Thanh toán" as P5
+rectangle "6. Báo cáo\n& Hệ thống" as P6
+
+database "Hồ sơ Nhân viên" as DS_NV
+database "Hồ sơ Khách hàng" as DS_KH
+database "Loại phòng" as DS_LP
+database "Danh mục Phòng" as DS_P
+database "Giá thuê phòng" as DS_GTP
+database "Loại dịch vụ" as DS_LDV
+database "Danh mục Dịch vụ" as DS_DV
+database "Phiếu đặt phòng" as DS_PDP
+database "Lịch sử nhận phòng" as DS_HCIN
+database "Lịch sử trả phòng" as DS_HCOUT
+database "Lịch sử đổi phòng" as DS_RCH
+database "Phiếu dịch vụ phòng" as DS_RUS
+database "Hóa đơn" as DS_INV
+
+KH --> P2 : "Thông tin đặt phòng"
+KH --> P2 : "Thông tin điều chỉnh đặt phòng"
+KH --> P2 : "Thông tin hủy đặt phòng"
+KH --> P4 : "Thông tin yêu cầu dịch vụ"
+KH --> P3 : "Thông tin trả phòng"
+P2 --> KH : "Xác nhận đặt phòng"
+P4 --> KH : "Xác nhận dịch vụ"
+P3 --> KH : "Biên nhận trả phòng"
+P5 --> KH : "Hóa đơn thanh toán"
+
+P5 --> PAY : "Yêu cầu thanh toán"
+PAY --> P5 : "Trạng thái thanh toán"
+
+P1 --> DS_NV
+P1 --> DS_KH
+P1 --> DS_LP
+P1 --> DS_P
+P1 --> DS_GTP
+P1 --> DS_LDV
+P1 --> DS_DV
+
+P2 --> DS_PDP
+P2 --> DS_P
+P2 --> DS_GTP
+P2 --> DS_KH
+
+P3 --> DS_HCIN
+P3 --> DS_HCOUT
+P3 --> DS_RCH
+P3 --> DS_P
+P3 --> DS_PDP
+
+P4 --> DS_RUS
+P4 --> DS_DV
+P4 --> DS_PDP
+
+P5 --> DS_INV
+P5 --> DS_RUS
+P5 --> DS_PDP
+
+P6 --> DS_INV
+P6 --> DS_PDP
+P6 --> DS_RUS
+P6 --> DS_HCIN
+P6 --> DS_HCOUT
+P6 --> DS_NV
+@enduml 

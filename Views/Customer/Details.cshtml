@@ -1,0 +1,169 @@
+@model HotelManagement.Models.Customer
+
+@{
+    ViewData["Title"] = "Chi tiết Khách hàng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-user"></i>
+        Chi tiết Khách hàng
+    </h1>
+    <p>Thông tin chi tiết về khách hàng</p>
+</div>
+
+<!-- Customer Details -->
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern">
+                <i class="fas fa-id-card me-2"></i>Thông tin Khách hàng: @Model.FullName
+            </div>
+            <div class="card-body-modern">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-hashtag text-primary"></i> Mã khách hàng
+                            </label>
+                            <div class="info-value">@Model.CustomerID</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-user text-primary"></i> Họ và tên
+                            </label>
+                            <div class="info-value">@Model.FullName</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-venus-mars text-primary"></i> Giới tính
+                            </label>
+                            <div class="info-value">
+                                @if (Model.Gender == "MALE")
+                                {
+                                    <span class="badge-modern badge-info-modern">Nam</span>
+                                }
+                                else if (Model.Gender == "FEMALE")
+                                {
+                                    <span class="badge-modern badge-danger-modern">Nữ</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-modern badge-warning-modern">Khác</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-birthday-cake text-primary"></i> Ngày sinh
+                            </label>
+                            <div class="info-value">@Model.Dob.ToString("dd/MM/yyyy")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-phone text-primary"></i> Số điện thoại
+                            </label>
+                            <div class="info-value">@Model.PhoneNumber</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-envelope text-primary"></i> Email
+                            </label>
+                            <div class="info-value">@Model.Email</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-id-card-alt text-primary"></i> Số CMND/CCCD
+                            </label>
+                            <div class="info-value">@Model.IdCardNumber</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-map-marker-alt text-primary"></i> Địa chỉ
+                            </label>
+                            <div class="info-value">@(Model.Address ?? "Chưa cập nhật")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="info-group">
+                            <label class="info-label">
+                                <i class="fas fa-toggle-on text-primary"></i> Trạng thái
+                            </label>
+                            <div class="info-value">
+                                @if (Model.IsActivate == "ACTIVATE")
+                                {
+                                    <span class="badge-modern badge-success-modern">
+                                        <i class="fas fa-check-circle"></i> Đang hoạt động
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge-modern badge-danger-modern">
+                                        <i class="fas fa-times-circle"></i> Đã ngưng
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer-modern">
+                <div class="d-flex gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model.CustomerID" class="btn btn-warning-modern">
+                        <i class="fas fa-edit"></i> Chỉnh sửa
+                    </a>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-group {
+    margin-bottom: 1rem;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: #212529;
+    font-weight: 500;
+}
+</style>

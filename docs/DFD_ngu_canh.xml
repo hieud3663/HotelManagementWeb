@@ -1,0 +1,22 @@
+@startuml
+left to right direction
+skinparam shadowing false
+actor "Khách hàng" as KH
+actor "Cổng thanh toán" as PAY
+
+rectangle "0. Hệ thống Quản lý Khách sạn" as SYS
+
+KH --> SYS : "Thông tin đặt phòng"
+KH --> SYS : "Thông tin điều chỉnh đặt phòng"
+KH --> SYS : "Thông tin hủy đặt phòng"
+KH --> SYS : "Thông tin sử dụng dịch vụ"
+KH --> SYS : "Thông tin trả phòng"
+SYS --> KH : "Xác nhận đặt phòng"
+SYS --> KH : "Xác nhận hủy đặt phòng"
+SYS --> KH : "Xác nhận dịch vụ"
+SYS --> KH : "Hóa đơn thanh toán"
+
+SYS --> PAY : "Yêu cầu thanh toán"
+PAY --> SYS : "Trạng thái thanh toán"
+
+@enduml

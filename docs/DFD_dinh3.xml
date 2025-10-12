@@ -1,0 +1,34 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+actor "Khách hàng" as KH
+
+rectangle "3.1 Thực hiện Check-in" as P3_1
+rectangle "3.2 Thực hiện Check-out" as P3_2
+rectangle "3.3 Xử lý đổi phòng" as P3_3
+rectangle "3.4 Quản lý trạng thái phòng" as P3_4
+
+database "Phiếu đặt phòng" as DS_PDP
+database "Lịch sử nhận phòng" as DS_HCIN
+database "Lịch sử trả phòng" as DS_HCOUT
+database "Lịch sử đổi phòng" as DS_RCH
+database "Danh mục Phòng" as DS_P
+
+KH --> P3_1 : "Thông tin nhận phòng"
+KH --> P3_2 : "Thông tin trả phòng"
+P3_2 --> KH : "Biên nhận trả phòng"
+KH --> P3_3 : "Yêu cầu đổi phòng"
+
+
+P3_1 --> DS_HCIN
+P3_2 --> DS_HCOUT
+P3_3 --> DS_RCH
+P3_1 --> DS_PDP
+P3_2 --> DS_PDP
+P3_4 --> DS_P
+
+P3_1 --> P3_4 : "Trạng thái phòng sử dụng"
+P3_2 --> P3_4 : "Trạng thái phòng bàn giao"
+P3_3 --> P3_4 : "Trạng thái phòng đổi"
+@enduml

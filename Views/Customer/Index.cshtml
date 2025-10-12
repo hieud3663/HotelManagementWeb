@@ -1,0 +1,93 @@
+@model IEnumerable<HotelManagement.Models.Customer>
+
+@{
+    ViewData["Title"] = "Quản lý Khách hàng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-users"></i>
+                Quản lý Khách hàng
+            </h1>
+            <p class="mb-0">Danh sách khách hàng trong hệ thống</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary-modern">
+            <i class="fas fa-plus"></i> Thêm khách hàng
+        </a>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-12">
+        <div class="stats-card primary fade-in-up">
+            <div class="stats-icon primary">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stats-title">TỔNG KHÁCH HÀNG</div>
+            <div class="stats-value">@Model.Count()</div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Table -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.1s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Khách hàng
+    </div>
+    <div class="card-body-modern">
+        <div class="table-responsive">
+            <table class="table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-hashtag"></i> Mã KH</th>
+                        <th><i class="fas fa-user"></i> Họ tên</th>
+                        <th><i class="fas fa-venus-mars"></i> Giới tính</th>
+                        <th><i class="fas fa-birthday-cake"></i> Ngày sinh</th>
+                        <th><i class="fas fa-phone"></i> Điện thoại</th>
+                        <th><i class="fas fa-envelope"></i> Email</th>
+                        <th><i class="fas fa-id-card"></i> CMND/CCCD</th>
+                        <th><i class="fas fa-map-marker-alt"></i> Địa chỉ</th>
+                        <th><i class="fas fa-cog"></i> Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td><strong class="text-primary">@item.CustomerID</strong></td>
+                            <td><strong>@item.FullName</strong></td>
+                            <td>@item.Gender</td>
+                            <td>@item.Dob.ToString("dd/MM/yyyy")</td>
+                            <td>@item.PhoneNumber</td>
+                            <td>@(item.Email ?? "N/A")</td>
+                            <td>@item.IdCardNumber</td>
+                            <td>@item.Address</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a asp-action="Details" asp-route-id="@item.CustomerID" 
+                                       class="btn btn-info-modern btn-sm" title="Chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@item.CustomerID" 
+                                       class="btn btn-warning-modern btn-sm" title="Sửa">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@item.CustomerID" 
+                                       class="btn btn-danger-modern btn-sm" 
+                                       onclick="return confirm('Xác nhận xóa khách hàng @item.FullName?');"
+                                       title="Xóa">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

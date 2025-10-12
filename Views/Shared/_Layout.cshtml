@@ -1,0 +1,130 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Quản lý Khách sạn</title>
+    <script type="importmap"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-toggleable-lg navbar-custom">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand" asp-area="" asp-controller="Dashboard" asp-action="Index">
+                    <i class="fas fa-hotel"></i> Quản lý Khách sạn
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @if (Context.Session.GetString("UserID") != null)
+                    {
+                        <ul class="navbar-nav flex-grow-1">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Dashboard" asp-action="Index">
+                                    <i class="fas fa-dashboard"></i> Trang chủ
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-database"></i> Danh mục
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Employee" asp-action="Index">Nhân viên</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Customer" asp-action="Index">Khách hàng</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" asp-controller="Room" asp-action="Index">Phòng</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Reservation" asp-action="Index">
+                                    <i class="fas fa-calendar-check"></i> Đặt phòng
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="CheckIn" asp-action="Index">
+                                    <i class="fas fa-sign-in-alt"></i> Check-in
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="CheckOut" asp-action="Index">
+                                    <i class="fas fa-sign-out-alt"></i> Check-out
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Invoice" asp-action="Index">
+                                    <i class="fas fa-file-invoice"></i> Hóa đơn
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Report" asp-action="Index">
+                                    <i class="fas fa-chart-line"></i> Báo cáo
+                                </a>
+                            </li>
+                        </ul>
+                        <ul class="navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-user"></i> @Context.Session.GetString("Username")
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" asp-controller="Auth" asp-action="Logout">
+                                        <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                                    </a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container-fluid px-4 py-4">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert-modern alert-success-modern alert-dismissible fade show fade-in-up" role="alert">
+                <i class="fas fa-check-circle"></i>
+                <span>@TempData["Success"]</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert-modern alert-danger-modern alert-dismissible fade show fade-in-up" role="alert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>@TempData["Error"]</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        <main role="main" class="pb-4">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="footer-modern text-center">
+        <div class="container">
+            <p class="mb-0 text-muted">
+                <i class="fas fa-hotel text-primary"></i>
+                &copy; 2025 - Hệ thống Quản lý Khách sạn <i class="fas fa-heart text-danger"></i>
+            </p>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/validation.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

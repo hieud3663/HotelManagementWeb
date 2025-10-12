@@ -1,0 +1,187 @@
+@model dynamic
+
+@{
+    ViewData["Title"] = "Báo cáo Hiệu suất Nhân viên";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-user-tie"></i>
+        Báo cáo Hiệu suất Nhân viên
+    </h1>
+    <p>Đánh giá hiệu quả làm việc của đội ngũ nhân viên</p>
+</div>
+
+<!-- Filter Form -->
+<div class="card-modern fade-in-up mb-4">
+    <div class="card-body-modern">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label-modern">Từ ngày</label>
+                <input type="date" name="fromDate" class="form-control-modern" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label-modern">Đến ngày</label>
+                <input type="date" name="toDate" class="form-control-modern" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary-modern w-100">
+                    <i class="fas fa-filter"></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Top Performer -->
+@if (ViewBag.TopEmployee != null)
+{
+    <div class="card-modern fade-in-up mb-4" style="animation-delay: 0.1s">
+        <div class="card-header-modern bg-warning text-white">
+            <i class="fas fa-trophy me-2"></i>Nhân viên xuất sắc nhất
+        </div>
+        <div class="card-body-modern">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3 class="mb-2">
+                        <i class="fas fa-star text-warning"></i>
+                        @ViewBag.TopEmployee.EmployeeName
+                    </h3>
+                    <p class="mb-2">
+                        <strong>Mã NV:</strong> @ViewBag.TopEmployee.EmployeeID |
+                        <strong>Chức vụ:</strong> @ViewBag.TopEmployee.Position
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <h1 class="text-warning mb-0">@ViewBag.TopEmployee.TotalReservations</h1>
+                    <p class="text-muted mb-0">Phiếu đặt phòng</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Summary Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon primary">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stats-title">TỔNG ĐẶT PHÒNG</div>
+            <div class="stats-value">@ViewBag.TotalReservations</div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon success">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stats-title">NHÂN VIÊN THAM GIA</div>
+            <div class="stats-value">@ViewBag.EmployeeStats.Count</div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Performance Table -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.4s">
+    <div class="card-header-modern">
+        <i class="fas fa-chart-bar me-2"></i>Bảng xếp hạng Nhân viên
+    </div>
+    <div class="card-body-modern">
+        @if (ViewBag.EmployeeStats != null && ViewBag.EmployeeStats.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-medal"></i> Hạng</th>
+                            <th><i class="fas fa-hashtag"></i> Mã NV</th>
+                            <th><i class="fas fa-user"></i> Họ tên</th>
+                            <th><i class="fas fa-briefcase"></i> Chức vụ</th>
+                            <th><i class="fas fa-calendar-check"></i> Số đặt phòng</th>
+                            <th><i class="fas fa-money-bill"></i> Tổng tiền cọc</th>
+                            <th><i class="fas fa-star"></i> Đánh giá</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int rank = 1;
+                        }
+                        @foreach (var emp in ViewBag.EmployeeStats)
+                        {
+                            <tr>
+                                <td>
+                                    @if (rank == 1)
+                                    {
+                                        <span class="badge-modern" style="background: gold; color: black;">
+                                            <i class="fas fa-trophy"></i> #@rank
+                                        </span>
+                                    }
+                                    else if (rank == 2)
+                                    {
+                                        <span class="badge-modern" style="background: silver; color: black;">
+                                            <i class="fas fa-medal"></i> #@rank
+                                        </span>
+                                    }
+                                    else if (rank == 3)
+                                    {
+                                        <span class="badge-modern" style="background: #CD7F32; color: white;">
+                                            <i class="fas fa-medal"></i> #@rank
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <strong>#@rank</strong>
+                                    }
+                                </td>
+                                <td><strong class="text-primary">@emp.EmployeeID</strong></td>
+                                <td><strong>@emp.EmployeeName</strong></td>
+                                <td>@emp.Position</td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        <i class="fas fa-list"></i> @emp.TotalReservations
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong class="text-success">@emp.TotalDeposit.ToString("N0") đ</strong>
+                                </td>
+                                <td>
+                                    @{
+                                        var performance = emp.TotalReservations >= 20 ? "Xuất sắc" :
+                                                         emp.TotalReservations >= 10 ? "Tốt" :
+                                                         emp.TotalReservations >= 5 ? "Khá" : "Trung bình";
+                                        var badgeClass = emp.TotalReservations >= 20 ? "badge-success-modern" :
+                                                        emp.TotalReservations >= 10 ? "badge-info-modern" :
+                                                        emp.TotalReservations >= 5 ? "badge-warning-modern" : "badge-danger-modern";
+                                    }
+                                    <span class="badge-modern @badgeClass">
+                                        <i class="fas fa-star"></i> @performance
+                                    </span>
+                                </td>
+                            </tr>
+                            rank++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Không có dữ liệu trong khoảng thời gian này</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Quay lại
+    </a>
+    <button onclick="window.print()" class="btn btn-info-modern">
+        <i class="fas fa-print"></i> In báo cáo
+    </button>
+</div>

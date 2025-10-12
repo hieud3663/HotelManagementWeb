@@ -1,0 +1,23 @@
+@startuml
+left to right direction
+skinparam shadowing false
+
+rectangle "6.1 Báo cáo doanh thu\n(phòng, dịch vụ)" as P6_1
+rectangle "6.2 Báo cáo công suất phòng" as P6_2
+rectangle "6.3 Báo cáo hiệu suất nhân viên" as P6_3
+
+database "Hóa đơn" as DS_INV
+database "Phiếu đặt phòng" as DS_PDP
+database "Phiếu dịch vụ phòng" as DS_RUS
+database "Lịch sử nhận phòng" as DS_HCIN
+database "Lịch sử trả phòng" as DS_HCOUT
+database "Hồ sơ Nhân viên" as DS_NV
+
+P6_1 --> DS_INV
+P6_1 --> DS_RUS
+P6_2 --> DS_PDP
+P6_2 --> DS_HCIN
+P6_2 --> DS_HCOUT
+P6_3 --> DS_NV
+P6_3 --> DS_PDP
+@enduml

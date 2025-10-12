@@ -1,0 +1,225 @@
+@model IEnumerable<HotelManagement.Models.Invoice>
+
+@{
+    ViewData["Title"] = "Báo cáo Doanh thu";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-dollar-sign"></i>
+        Báo cáo Doanh thu
+    </h1>
+    <p>Phân tích doanh thu từ phòng và dịch vụ</p>
+</div>
+
+<!-- Filter Form -->
+<div class="card-modern fade-in-up mb-4">
+    <div class="card-body-modern">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label-modern">Từ ngày</label>
+                <input type="date" name="fromDate" class="form-control-modern" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label-modern">Đến ngày</label>
+                <input type="date" name="toDate" class="form-control-modern" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary-modern w-100">
+                    <i class="fas fa-filter"></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card success fade-in-up" style="animation-delay: 0.1s">
+            <div class="stats-icon success">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stats-title">TỔNG DOANH THU</div>
+            <div class="stats-value" style="font-size: 1.5rem">@ViewBag.TotalRevenue.ToString("N0") đ</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card primary fade-in-up" style="animation-delay: 0.2s">
+            <div class="stats-icon primary">
+                <i class="fas fa-bed"></i>
+            </div>
+            <div class="stats-title">DOANH THU PHÒNG</div>
+            <div class="stats-value" style="font-size: 1.5rem">@ViewBag.RoomRevenue.ToString("N0") đ</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card info fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon info">
+                <i class="fas fa-concierge-bell"></i>
+            </div>
+            <div class="stats-title">DOANH THU DỊCH VỤ</div>
+            <div class="stats-value" style="font-size: 1.5rem">@ViewBag.ServiceRevenue.ToString("N0") đ</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card warning fade-in-up" style="animation-delay: 0.4s">
+            <div class="stats-icon warning">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <div class="stats-title">SỐ HÓA ĐƠN</div>
+            <div class="stats-value">@ViewBag.TotalInvoices</div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue by Room Type -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-pie me-2"></i>Doanh thu theo Loại phòng
+            </div>
+            <div class="card-body-modern">
+                @if (ViewBag.RevenueByRoomType != null && ViewBag.RevenueByRoomType.Count > 0)
+                {
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Loại phòng</th>
+                                <th>Số lượng</th>
+                                <th class="text-end">Doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ViewBag.RevenueByRoomType)
+                            {
+                                <tr>
+                                    <td><strong>@item.RoomType</strong></td>
+                                    <td><span class="badge-modern badge-info-modern">@item.Count HĐ</span></td>
+                                    <td class="text-end">
+                                        <strong class="text-success">@item.Revenue.ToString("N0") đ</strong>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted text-center mb-0">Không có dữ liệu</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-line me-2"></i>Doanh thu theo Ngày
+            </div>
+            <div class="card-body-modern">
+                @if (ViewBag.DailyRevenue != null && ViewBag.DailyRevenue.Count > 0)
+                {
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Số HĐ</th>
+                                    <th class="text-end">Doanh thu</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in ViewBag.DailyRevenue)
+                                {
+                                    <tr>
+                                        <td>@item.Date.ToString("dd/MM/yyyy")</td>
+                                        <td><span class="badge-modern badge-info-modern">@item.Count</span></td>
+                                        <td class="text-end">
+                                            <strong class="text-success">@item.Revenue.ToString("N0") đ</strong>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center mb-0">Không có dữ liệu</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Invoice List -->
+<div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Chi tiết Hóa đơn
+    </div>
+    <div class="card-body-modern">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Mã HĐ</th>
+                            <th>Ngày xuất</th>
+                            <th>Khách hàng</th>
+                            <th>Loại phòng</th>
+                            <th class="text-end">Tiền phòng</th>
+                            <th class="text-end">Tiền DV</th>
+                            <th class="text-end">Tổng tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var invoice in Model.OrderBy(i => i.InvoiceDate))
+                        {
+                            <tr>
+                                <td><strong class="text-primary">#@invoice.InvoiceID</strong></td>
+                                <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                <td>@invoice.ReservationForm?.Customer?.FullName</td>
+                                <td>@invoice.ReservationForm?.Room?.RoomCategory?.RoomCategoryName</td>
+                                <td class="text-end">@invoice.RoomCharge.ToString("N0") đ</td>
+                                <td class="text-end">@invoice.ServicesCharge.ToString("N0") đ</td>
+                                <td class="text-end">
+                                    <strong class="text-success">@(invoice.NetDue ?? 0).ToString("N0") đ</strong>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="4" class="text-end">TỔNG CỘNG:</th>
+                            <th class="text-end">@Model.Sum(i => i.RoomCharge).ToString("N0") đ</th>
+                            <th class="text-end">@Model.Sum(i => i.ServicesCharge).ToString("N0") đ</th>
+                            <th class="text-end">
+                                <strong class="text-success h5">@Model.Sum(i => i.NetDue ?? 0).ToString("N0") đ</strong>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Không có hóa đơn nào trong khoảng thời gian này</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Quay lại
+    </a>
+    <button onclick="window.print()" class="btn btn-info-modern">
+        <i class="fas fa-print"></i> In báo cáo
+    </button>
+</div>

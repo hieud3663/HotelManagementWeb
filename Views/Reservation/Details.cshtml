@@ -1,0 +1,251 @@
+@model HotelManagement.Models.ReservationForm
+
+@{
+    ViewData["Title"] = "Chi tiết đặt phòng";
+}
+
+<div class="container-modern">
+    <div class="header-modern">
+        <h2><i class="fas fa-file-alt me-2"></i>Chi tiết đặt phòng</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb-modern">
+                <li class="breadcrumb-item-modern"><a asp-controller="Dashboard" asp-action="Index">Trang chủ</a></li>
+                <li class="breadcrumb-item-modern"><a asp-controller="Reservation" asp-action="Index">Đặt phòng</a></li>
+                <li class="breadcrumb-item-modern active">Chi tiết</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row g-4">
+        <!-- Thông tin đặt phòng -->
+        <div class="col-md-6">
+            <div class="card-modern">
+                <div class="card-header-modern bg-primary text-white">
+                    <i class="fas fa-info-circle me-2"></i>Thông tin đặt phòng
+                </div>
+                <div class="card-body-modern">
+                    <dl class="row">
+                        <dt class="col-sm-5">Mã đặt phòng:</dt>
+                        <dd class="col-sm-7"><strong class="text-primary">@Model.ReservationFormID</strong></dd>
+
+                        <dt class="col-sm-5">Ngày đặt:</dt>
+                        <dd class="col-sm-7">@Model.ReservationDate.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                        <dt class="col-sm-5">Ngày check-in:</dt>
+                        <dd class="col-sm-7">@Model.CheckInDate.ToString("dd/MM/yyyy")</dd>
+
+                        <dt class="col-sm-5">Ngày check-out:</dt>
+                        <dd class="col-sm-7">@Model.CheckOutDate.ToString("dd/MM/yyyy")</dd>
+
+                        <dt class="col-sm-5">Số ngày ở:</dt>
+                        <dd class="col-sm-7">@((Model.CheckOutDate - Model.CheckInDate).Days) ngày</dd>
+
+                        <dt class="col-sm-5">Tiền đặt cọc:</dt>
+                        <dd class="col-sm-7"><strong class="text-success">@Model.RoomBookingDeposit.ToString("N0") đ</strong></dd>
+
+                        <dt class="col-sm-5">Trạng thái:</dt>
+                        <dd class="col-sm-7">
+                            @if (Model.HistoryCheckin != null && Model.HistoryCheckOut != null)
+                            {
+                                <span class="badge bg-secondary">Đã trả phòng</span>
+                            }
+                            else if (Model.HistoryCheckin != null)
+                            {
+                                <span class="badge bg-warning">Đang ở</span>
+                            }
+                            else if (Model.IsActivate == "ACTIVATE")
+                            {
+                                <span class="badge bg-info">Đã đặt</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Đã hủy</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin khách hàng -->
+        <div class="col-md-6">
+            <div class="card-modern">
+                <div class="card-header-modern bg-info text-white">
+                    <i class="fas fa-user me-2"></i>Thông tin khách hàng
+                </div>
+                <div class="card-body-modern">
+                    <dl class="row">
+                        <dt class="col-sm-5">Mã khách hàng:</dt>
+                        <dd class="col-sm-7">@Model.Customer?.CustomerID</dd>
+
+                        <dt class="col-sm-5">Họ tên:</dt>
+                        <dd class="col-sm-7"><strong>@Model.Customer?.FullName</strong></dd>
+
+                        <dt class="col-sm-5">Số điện thoại:</dt>
+                        <dd class="col-sm-7">@Model.Customer?.PhoneNumber</dd>
+
+                        <dt class="col-sm-5">Email:</dt>
+                        <dd class="col-sm-7">@Model.Customer?.Email</dd>
+
+                        <dt class="col-sm-5">CCCD:</dt>
+                        <dd class="col-sm-7">@Model.Customer?.IdCardNumber</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin phòng -->
+        <div class="col-md-6">
+            <div class="card-modern">
+                <div class="card-header-modern bg-success text-white">
+                    <i class="fas fa-door-open me-2"></i>Thông tin phòng
+                </div>
+                <div class="card-body-modern">
+                    <dl class="row">
+                        <dt class="col-sm-5">Mã phòng:</dt>
+                        <dd class="col-sm-7"><strong class="text-success">@Model.Room?.RoomID</strong></dd>
+
+                        <dt class="col-sm-5">Loại phòng:</dt>
+                        <dd class="col-sm-7">@Model.Room?.RoomCategory?.RoomCategoryName</dd>
+
+                        <dt class="col-sm-5">Số giường:</dt>
+                        <dd class="col-sm-7">@Model.Room?.RoomCategory?.NumberOfBed giường</dd>
+
+                        <dt class="col-sm-5">Trạng thái phòng:</dt>
+                        <dd class="col-sm-7">
+                            @if (Model.Room?.RoomStatus == "AVAILABLE")
+                            {
+                                <span class="badge bg-success">Trống</span>
+                            }
+                            else if (Model.Room?.RoomStatus == "ON_USE")
+                            {
+                                <span class="badge bg-warning">Đang sử dụng</span>
+                            }
+                            else if (Model.Room?.RoomStatus == "RESERVED")
+                            {
+                                <span class="badge bg-info">Đã đặt</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@Model.Room?.RoomStatus</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin nhân viên -->
+        <div class="col-md-6">
+            <div class="card-modern">
+                <div class="card-header-modern bg-warning text-dark">
+                    <i class="fas fa-user-tie me-2"></i>Thông tin nhân viên
+                </div>
+                <div class="card-body-modern">
+                    <dl class="row">
+                        <dt class="col-sm-5">Mã nhân viên:</dt>
+                        <dd class="col-sm-7">@Model.Employee?.EmployeeID</dd>
+
+                        <dt class="col-sm-5">Họ tên:</dt>
+                        <dd class="col-sm-7"><strong>@Model.Employee?.FullName</strong></dd>
+
+                        <dt class="col-sm-5">Chức vụ:</dt>
+                        <dd class="col-sm-7">@Model.Employee?.Position</dd>
+
+                        @if (Model.HistoryCheckin != null)
+                        {
+                            <dt class="col-sm-5">Check-in lúc:</dt>
+                            <dd class="col-sm-7">@Model.HistoryCheckin.CheckInDate.ToString("dd/MM/yyyy HH:mm")</dd>
+                        }
+
+                        @if (Model.HistoryCheckOut != null)
+                        {
+                            <dt class="col-sm-5">Check-out lúc:</dt>
+                            <dd class="col-sm-7">@Model.HistoryCheckOut.CheckOutDate.ToString("dd/MM/yyyy HH:mm")</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dịch vụ sử dụng -->
+        @if (Model.RoomUsageServices != null && Model.RoomUsageServices.Any())
+        {
+            <div class="col-12">
+                <div class="card-modern">
+                    <div class="card-header-modern bg-purple text-white">
+                        <i class="fas fa-concierge-bell me-2"></i>Dịch vụ sử dụng
+                    </div>
+                    <div class="card-body-modern">
+                        <div class="table-responsive">
+                            <table class="table table-modern">
+                                <thead>
+                                    <tr>
+                                        <th>Dịch vụ</th>
+                                        <th>Loại</th>
+                                        <th>Số lượng</th>
+                                        <th>Đơn giá</th>
+                                        <th>Thành tiền</th>
+                                        <th>Ngày thêm</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var service in Model.RoomUsageServices)
+                                    {
+                                        var servicePrice = service.HotelService?.ServicePrice ?? 0;
+                                        var totalPrice = service.Quantity * service.UnitPrice;
+                                        <tr>
+                                            <td>@service.HotelService?.ServiceName</td>
+                                            <td>@service.HotelService?.ServiceCategory?.ServiceCategoryName</td>
+                                            <td>@service.Quantity</td>
+                                            <td>@service.UnitPrice.ToString("N0") đ</td>
+                                            <td><strong>@totalPrice.ToString("N0") đ</strong></td>
+                                            <td>@service.DateAdded.ToString("dd/MM/yyyy HH:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="4" class="text-end">Tổng tiền dịch vụ:</th>
+                                        <th><strong class="text-success">@Model.RoomUsageServices.Sum(s => s.Quantity * s.UnitPrice).ToString("N0") đ</strong></th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Actions -->
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </a>
+                @if (Model.IsActivate == "ACTIVATE" && Model.HistoryCheckin == null)
+                {
+                    <a asp-controller="CheckIn" asp-action="CheckIn" asp-route-reservationFormID="@Model.ReservationFormID" class="btn btn-success">
+                        <i class="fas fa-sign-in-alt"></i> Check-in
+                    </a>
+                }
+                @if (Model.HistoryCheckin != null && Model.HistoryCheckOut == null)
+                {
+                    <a asp-controller="RoomService" asp-action="Index" asp-route-reservationFormID="@Model.ReservationFormID" class="btn btn-info">
+                        <i class="fas fa-concierge-bell"></i> Dịch vụ
+                    </a>
+                    <a asp-controller="CheckOut" asp-action="Details" asp-route-reservationFormID="@Model.ReservationFormID" class="btn btn-warning">
+                        <i class="fas fa-sign-out-alt"></i> Check-out
+                    </a>
+                }
+                @if (Model.HistoryCheckOut != null && Model.Invoices != null && Model.Invoices.Any())
+                {
+                    <a asp-controller="Invoice" asp-action="Invoice" asp-route-id="@Model.Invoices.First().InvoiceID" class="btn btn-primary">
+                        <i class="fas fa-file-invoice"></i> Xem hóa đơn
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -155,8 +155,47 @@
     </div>
 </div>
 
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <!-- Daily Revenue Line Chart -->
+    <div class="col-12">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-area me-2"></i>Biểu đồ Doanh thu theo Ngày
+            </div>
+            <div class="card-body-modern">
+                <canvas id="dailyRevenueChart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue by Room Type Pie Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.8s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-pie me-2"></i>Phân bố Doanh thu theo Loại phòng
+            </div>
+            <div class="card-body-modern">
+                <canvas id="roomTypeRevenueChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Comparison Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.9s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-bar me-2"></i>So sánh Doanh thu Phòng vs Dịch vụ
+            </div>
+            <div class="card-body-modern">
+                <canvas id="revenueComparisonChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Detailed Invoice List -->
-<div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+<div class="card-modern fade-in-up" style="animation-delay: 1.0s">
     <div class="card-header-modern">
         <i class="fas fa-list me-2"></i>Chi tiết Hóa đơn
     </div>
@@ -164,7 +203,7 @@
         @if (Model.Any())
         {
             <div class="table-responsive">
-                <table class="table-modern mb-0">
+                <table class="table-modern mb-0 w-100">
                     <thead>
                         <tr>
                             <th>Mã HĐ</th>
@@ -187,7 +226,7 @@
                                 <td class="text-end">@invoice.RoomCharge.ToString("N0") đ</td>
                                 <td class="text-end">@invoice.ServicesCharge.ToString("N0") đ</td>
                                 <td class="text-end">
-                                    <strong class="text-success">@(invoice.NetDue ?? 0).ToString("N0") đ</strong>
+                                    <strong class="text-success">@(invoice.NetDue?.ToString("N0")) đ</strong>
                                 </td>
                             </tr>
                         }
@@ -223,3 +262,148 @@
         <i class="fas fa-print"></i> In báo cáo
     </button>
 </div>
+
+@section Scripts {
+    <script>
+        // 1. Daily Revenue Line Chart
+        @if (ViewBag.DailyRevenue != null && ViewBag.DailyRevenue.Count > 0)
+            {
+                <text>
+                    const dailyData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.DailyRevenue));
+                    const ctxDaily = document.getElementById('dailyRevenueChart').getContext('2d');
+                    new Chart(ctxDaily, {
+                        type: 'line',
+                    data: {
+                        labels: dailyData.map(d => new Date(d.Date).toLocaleDateString('vi-VN')),
+                    datasets: [{
+                        label: 'Doanh thu (VNĐ)',
+                        data: dailyData.map(d => d.Revenue),
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2
+                    }]
+                },
+                    options: {
+                        responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                        display: false
+                        },
+                    tooltip: {
+                        callbacks: {
+                        label: function(context) {
+                                    return 'Doanh thu: ' + context.parsed.y.toLocaleString('vi-VN') + ' đ';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                        beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                                    return value.toLocaleString('vi-VN') + ' đ';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+                </text>
+        }
+
+            // 2. Room Type Revenue Pie Chart
+            @if (ViewBag.RevenueByRoomType != null && ViewBag.RevenueByRoomType.Count > 0)
+            {
+                <text>
+                    const roomTypeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.RevenueByRoomType));
+                    const ctxRoomType = document.getElementById('roomTypeRevenueChart').getContext('2d');
+                    new Chart(ctxRoomType, {
+                        type: 'doughnut',
+                    data: {
+                        labels: roomTypeData.map(r => r.RoomType),
+                    datasets: [{
+                        label: 'Doanh thu',
+                        data: roomTypeData.map(r => r.Revenue),
+                    backgroundColor: [
+                    '#4e73df',
+                    '#1cc88a',
+                    '#36b9cc',
+                    '#f6c23e',
+                    '#e74a3b',
+                    '#858796'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                    }]
+                },
+                    options: {
+                        responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                        position: 'right'
+                        },
+                    tooltip: {
+                        callbacks: {
+                        label: function(context) {
+                                    const label = context.label || '';
+                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return label + ': ' + value.toLocaleString('vi-VN') + ' đ (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+                </text>
+        }
+
+    // 3. Revenue Comparison Bar Chart (Room vs Service)
+    const ctxComparison = document.getElementById('revenueComparisonChart').getContext('2d');
+        new Chart(ctxComparison, {
+            type: 'bar',
+            data: {
+                labels: ['Doanh thu Phòng', 'Doanh thu Dịch vụ'],
+                datasets: [{
+                    label: 'VNĐ',
+                    data: [@ViewBag.RoomRevenue, @ViewBag.ServiceRevenue],
+                    backgroundColor: ['#1cc88a', '#36b9cc'],
+                    borderColor: ['#17a673', '#2c9faf'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.parsed.y.toLocaleString('vi-VN') + ' đ';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return value.toLocaleString('vi-VN') + ' đ';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}

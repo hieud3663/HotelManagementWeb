@@ -44,6 +44,18 @@ namespace HotelManagement.Models
         [Range(0, double.MaxValue, ErrorMessage = "Tiền đặt cọc phải lớn hơn hoặc bằng 0")]
         public double RoomBookingDeposit { get; set; }
 
+        [Required]
+        [Column("priceUnit")]
+        [StringLength(15)]
+        [Display(Name = "Hình thức thuê")]
+        public string PriceUnit { get; set; } = "DAY";
+
+        [Required]
+        [Column("unitPrice")]
+        [Display(Name = "Đơn giá")]
+        [Range(0, double.MaxValue, ErrorMessage = "Đơn giá phải lớn hơn hoặc bằng 0")]
+        public decimal UnitPrice { get; set; }
+
         [Column("isActivate")]
         [StringLength(10)]
         public string IsActivate { get; set; } = "ACTIVATE";

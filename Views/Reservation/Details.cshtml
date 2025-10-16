@@ -226,9 +226,15 @@
                 </a>
                 @if (Model.IsActivate == "ACTIVATE" && Model.HistoryCheckin == null)
                 {
-                    <a asp-controller="CheckIn" asp-action="CheckIn" asp-route-reservationFormID="@Model.ReservationFormID" class="btn btn-success">
-                        <i class="fas fa-sign-in-alt"></i> Check-in
-                    </a>
+                    <form asp-controller="CheckIn" asp-action="CheckIn" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="reservationFormID" value="@Model.ReservationFormID" />
+                        <button type="submit" 
+                                class="btn btn-success" 
+                                onclick="return confirm('Xác nhận check-in cho khách @Model.Customer?.FullName?');">
+                            <i class="fas fa-sign-in-alt"></i> Check-in
+                        </button>
+                    </form>
                 }
                 @if (Model.HistoryCheckin != null && Model.HistoryCheckOut == null)
                 {
@@ -249,3 +255,12 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Script đơn giản cho reservation details
+        $(document).ready(function() {
+            console.log('Reservation details page loaded');
+        });
+    </script>
+}

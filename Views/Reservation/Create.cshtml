@@ -4,13 +4,342 @@
     ViewData["Title"] = "Đặt phòng mới";
 }
 
+<style>
+    .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .room-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        min-height: 200px;
+    }
+
+    .room-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .room-card.available {
+        background: linear-gradient(135deg, #52c234 0%, #61d345 100%);
+        border: 3px solid transparent;
+    }
+
+    .room-card.reserved {
+        background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+        border: 3px solid transparent;
+    }
+
+    .room-card.overdue {
+        background: linear-gradient(135deg, #e74c3c 0%, #f05545 100%);
+    }
+
+    .room-card.onuse {
+        background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    }
+
+    .room-card.selected {
+        border: 3px solid #2c3e50;
+        box-shadow: 0 0 10px rgba(44, 62, 80, 0.5);
+        animation: pulse 1s infinite;
+        background-color: #066e27;
+    }
+
+    @@keyframes pulse {
+        0% {
+            box-shadow: 0 0 10px rgba(44, 62, 80, 0.5);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(44, 62, 80, 0.7);
+        }
+        100% {
+            box-shadow: 0 0 10px rgba(44, 62, 80, 0.5);
+        }
+    }
+
+
+    .room-card-header {
+        padding: 15px;
+        color: white;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .room-card-body {
+        padding: 20px;
+        text-align: center;
+    }
+
+    .room-number {
+        font-size: 48px;
+        font-weight: bold;
+        color: white;
+        margin: 10px 0;
+    }
+
+    .room-status {
+        font-size: 32px;
+        color: white;
+        font-weight: 300;
+        margin: 10px 0;
+    }
+
+    .room-category {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 14px;
+        margin-top: 10px;
+    }
+
+    .room-pricing {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 8px;
+        margin-top: 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: white;
+    }
+
+    .room-pricing .price-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 3px 0;
+    }
+
+    .room-pricing .price-label {
+        font-weight: 500;
+        opacity: 0.9;
+    }
+
+    .room-pricing .price-value {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .room-info {
+        background: rgba(0, 0, 0, 0.1);
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 6px;
+    }
+
+    .room-info p {
+        margin: 3px 0;
+        color: white;
+        font-size: 13px;
+    }
+
+    .room-icon {
+        font-size: 40px;
+        color: white;
+        opacity: 0.9;
+    }
+
+    .countdown-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        animation: pulse-badge 2s infinite;
+        z-index: 10;
+    }
+
+    @@keyframes pulse-badge {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        50% {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.6);
+        }
+    }
+
+    .filter-bar {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-bar .row {
+        align-items: flex-start;
+    }
+
+    .filter-bar label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .filter-bar .form-control-modern,
+    .filter-bar .form-select {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+    }
+
+    .filter-bar .form-control-modern:focus,
+    .filter-bar .form-select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .filter-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .filter-btn:hover {
+        border-color: #3498db;
+        background: #f0f8ff;
+    }
+
+    .filter-btn.active {
+        border-color: #3498db;
+        background: #3498db;
+        color: white;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        margin: 5px;
+    }
+
+    .status-all { background: #95a5a6; color: white; }
+    .status-available { background: #52c234; color: white; }
+    .status-onuse {  background: #3498db; color: white; }
+    .status-overdue { background: #e74c3c; color: white; }
+    .status-reserved { background: #f39c12; color: white; }
+
+    .filter-section {
+        margin-bottom: 20px;
+    }
+
+    .filter-section:last-child {
+        margin-bottom: 0;
+    }
+</style>
+
 <!-- Page Header -->
 <div class="page-header fade-in-up">
     <h1>
         <i class="fas fa-calendar-plus"></i>
-        Tạo phiếu đặt phòng
+        Đặt phòng mới
     </h1>
-    <p>Thêm phiếu đặt phòng mới cho khách hàng</p>
+    <p>Chọn phòng trống và điền thông tin đặt phòng</p>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar fade-in-up">
+    <div class="filter-section">
+        <div class="row g-3">
+            <!-- Check-in Date -->
+            <div class="col-md-3">
+                <label class="form-label-modern">
+                    <i class="fas fa-sign-in-alt"></i> Ngày giờ nhận phòng
+                </label>
+                <div class="input-group">
+                    <input id="checkInDateFilter" type="datetime-local" class="form-control-modern" style="cursor: pointer;" required />
+                    <button type="button" class="btn btn-light border" onclick="setCurrentTimeCheckIn()" title="Lấy thời gian hiện tại">
+                        <i class="fas fa-clock"></i>
+                    </button>
+                </div>
+                <span id="checkInDateError" class="text-danger" style="display:none;"></span>
+            </div>
+
+            <!-- Duration Input -->
+            <div class="col-md-3">
+                <label class="form-label-modern">
+                    <i class="fas fa-hourglass-half"></i> Thời lượng
+                </label>
+                <div class="input-group">
+                    <input id="durationInput" type="number" class="form-control-modern" min="1" placeholder="Số lượng" />
+                    <select id="durationUnit" class="form-select form-control-modern" style="max-width: 90px; cursor: pointer;">
+                        <option value="hour">Giờ</option>
+                        <option value="day" selected>Ngày</option>
+                    </select>
+                </div>
+                <small class="text-muted">Tự động tính trả phòng</small>
+            </div>
+
+            <!-- Check-out Date -->
+            <div class="col-md-3">
+                <label class="form-label-modern">
+                    <i class="fas fa-sign-out-alt"></i> Ngày giờ trả phòng
+                </label>
+                <input id="checkOutDateFilter" type="datetime-local" class="form-control-modern" style="cursor: pointer;" required />
+                <span id="checkOutDateError" class="text-danger" style="display:none;"></span>
+            </div>
+
+            <!-- Room Category Filter -->
+            <div class="col-md-2">
+                <label class="form-label-modern">
+                    <i class="fas fa-th-large"></i> Loại Phòng
+                </label>
+                <select id="categoryFilter" class="form-select form-control-modern">
+                    <option value="">Tất cả loại phòng</option>
+                    @if (ViewData["RoomCategories"] is SelectList categories)
+                    {
+                        foreach (var item in categories)
+                        {
+                            <option value="@item.Value">@item.Text</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <!-- Filter Button -->
+            <div class="col-md-3 d-flex align-items-end">
+                <button id="filterButton" class="btn btn-primary-modern w-100">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Counters -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-12 text-center">
+                <span class="status-badge status-all">Tổng: <span id="totalRooms">0</span></span>
+                <span class="status-badge status-available">Trống: <span id="availableRooms">0</span></span>
+                <span class="status-badge status-onuse">Đang sử dụng: <span id="onuseRooms">0</span></span>
+                <span class="status-badge status-reserved">Đã đặt: <span id="reservedRooms">0</span></span>
+                <span class="status-badge status-overdue">Quá hạn: <span id="occupiedRooms">0</span></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Room Grid -->
+<div id="roomGrid" class="room-grid fade-in-up">
+    <!-- Rooms will be loaded here via JavaScript -->
 </div>
 
 <!-- Form -->
@@ -22,11 +351,18 @@
         <form id="reservationForm" asp-action="Create" method="post">
             @Html.AntiForgeryToken()
 
+            <!-- Hidden fields for CheckIn and CheckOut -->
+            <input type="hidden" asp-for="CheckInDate" id="checkInDateHidden" />
+            <input type="hidden" asp-for="CheckOutDate" id="checkOutDateHidden" />
+            <input type="hidden" asp-for="RoomID" id="roomIdHidden" />
+            <input type="hidden" asp-for="PriceUnit" id="priceUnitHidden" />
+            <input type="hidden" asp-for="UnitPrice" id="unitPriceHidden" />
+
             <div class="row g-4">
                 <!-- Customer Selection -->
                 <div class="col-md-12">
                     <label class="form-label-modern">
-                        <i class="fas fa-user"></i> Khách hàng
+                        <i class="fas fa-user"></i> Khách hàng *
                     </label>
                     <div class="input-group">
                         <select asp-for="CustomerID" class="form-control-modern flex-grow-1"
@@ -40,52 +376,22 @@
                     </div>
                     <span asp-validation-for="CustomerID" class="text-danger"></span>
                 </div>
-
-
-                <!-- Check-in Date -->
-                <div class="col-md-6">
-                    <label class="form-label-modern">
-                        <i class="fas fa-sign-in-alt"></i> Ngày giờ nhận phòng
-                    </label>
-                    <input asp-for="CheckInDate" type="datetime-local" class="form-control-modern" required />
-                    <span asp-validation-for="CheckInDate" id="checkInDateError" class="text-danger"></span>
-                </div>
-
-                <!-- Check-out Date -->
-                <div class="col-md-6">
-                    <label class="form-label-modern">
-                        <i class="fas fa-sign-out-alt"></i> Ngày giờ trả phòng
-                    </label>
-                    <input asp-for="CheckOutDate" type="datetime-local" class="form-control-modern" required />
-                    <span asp-validation-for="CheckOutDate" id="checkOutDateError" class="text-danger"></span>
-                </div>
-
-                <!-- Room Category -->
-                <div class="col-md-6">
-                    <label class="form-label-modern">
-                        <i class="fas fa-th-large"></i> Loại phòng
-                    </label>
-                    <select id="roomCategorySelect" class="form-control-modern"
-                        asp-items='(SelectList)ViewData["RoomCategories"]' required>
-                        <option value="">-- Chọn loại phòng --</option>
-                    </select>
-                </div>
-
-                <!-- Available Rooms -->
-                <div class="col-md-6">
-                    <label class="form-label-modern">
-                        <i class="fas fa-door-open"></i> Phòng
-                    </label>
-                    <select asp-for="RoomID" class="form-control-modern" required>
-                        <option value="">-- Chọn loại phòng trước --</option>
-                    </select>
-                    <span asp-validation-for="RoomID" class="text-danger"></span>
+                
+                <!-- Selected Room Display -->
+                <div class="col-md-12" id="selectedRoomDisplay" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-door-open me-2"></i>
+                        <strong>Phòng đã chọn:</strong> <span id="selectedRoomText"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="clearRoomSelection()">
+                            <i class="fas fa-times"></i> Hủy chọn
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Price Unit -->
                 <div class="col-md-6">
                     <label class="form-label-modern">
-                        <i class="fas fa-clock"></i> Hình thức thuê
+                        <i class="fas fa-clock"></i> Hình thức thuê *
                     </label>
                     <select id="priceUnitSelect" class="form-control-modern" required>
                         <option value="">-- Chọn phòng trước --</option>
@@ -95,7 +401,7 @@
                 <!-- Deposit -->
                 <div class="col-md-6">
                     <label class="form-label-modern">
-                        <i class="fas fa-money-bill-wave"></i> Tiền cọc (VNĐ)
+                        <i class="fas fa-money-bill-wave"></i> Tiền cọc (VNĐ) *
                     </label>
                     <input asp-for="RoomBookingDeposit" type="number" class="form-control-modern" min="0" step="1000"
                         required />
@@ -113,7 +419,7 @@
                 </div>
 
                 <!-- Notes -->
-                <div class="col-12">
+                <div class="col-md-6">
                     <label class="form-label-modern">
                         <i class="fas fa-sticky-note"></i> Ghi chú
                     </label>
@@ -123,7 +429,7 @@
             </div>
 
             <div class="d-flex gap-3 mt-4">
-                <button type="submit" class="btn btn-primary-modern" >
+                <button type="submit" class="btn btn-primary-modern">
                     <i class="fas fa-save"></i> Tạo phiếu đặt phòng
                 </button>
                 <a asp-action="Index" class="btn btn-danger-modern">
@@ -138,123 +444,462 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script src="~/js/validation.js"></script>
     <script>
+        let selectedRoomId = null;
+
+        $('#priceUnitSelect').on('change', function() {
+            @* const selectedOption = $(this).find('option:selected');
+            const amount = selectedOption.data('amount');
+            $('#unitPriceHidden').val(amount);
+            console.log('Selected price unit amount:', amount); *@
+            @* console.log($("#priceUnitHidden").val());
+            console.log($("#unitPriceHidden").val()); *@
+        });
+
+
+        
+
         $(document).ready(function () {
-            
-            $('#reservationForm').on('submit', function (event) {
-                validateReservationForm(event);
+
+            flatpickr("#checkInDateFilter", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                allowInput: true
             });
 
-            // Helper function to populate select dropdown
-            function populateSelect(selectElement, options, valueProp, textProp, placeholder) {
-                selectElement.empty();
-                selectElement.append($('<option></option>').attr('value', '').text(placeholder));
+            flatpickr("#checkOutDateFilter", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                allowInput: true
+            });
+            
+            // Set default datetime values
+            setDefaultDates();
 
-                $.each(options, function (i, item) {
-                    selectElement.append($('<option></option>')
-                        .attr('value', item[valueProp])
-                        .text(item[textProp]));
-                });
-            }
+            // Load rooms on page load
+            loadRoomGrid();
 
-            // Load available rooms when room category or dates change
-            function loadAvailableRooms() {
-                var categoryId = $('#roomCategorySelect').val();
-                var checkIn = $('input[name="CheckInDate"]').val();
-                var checkOut = $('input[name="CheckOutDate"]').val();
+            // Reload rooms when filter changes
+            $('#categoryFilter').change(loadRoomGrid);
 
-                if (categoryId && checkIn && checkOut) {
-                    $.ajax({
-                        url: '@Url.Action("GetAvailableRoomsByCatgory", "Room")',
-                        type: 'GET',
-                        data: {
-                            categoryId: categoryId,
-                            checkInDate: checkIn,
-                            checkOutDate: checkOut
-                        },
-                        success: function (data) {
-                            var roomSelect = $('select[name="RoomID"]');
-                            roomSelect.empty();
-                            roomSelect.append('<option value="">-- Chọn phòng --</option>');
+            // Load rooms when dates change
+            $('#checkInDateFilter, #checkOutDateFilter').change(function () {
+                validateDates();
+            });
 
-                            if (data.length === 0) {
-                                roomSelect.append('<option value="" disabled>Không có phòng trống</option>');
-                            } else {
-                                $.each(data, function (i, room) {
-                                    roomSelect.append($('<option></option>')
-                                        .attr('value', room.roomID)
-                                        .text('Phòng ' + room.roomID));
-                                });
-                            }
-                        },
-                        error: function () {
-                            alert('Lỗi khi tải danh sách phòng!');
-                        }
-                    });
-                } else {
-                    // Reset room dropdown if conditions not met
-                    $('select[name="RoomID"]').empty()
-                        .append('<option value="">-- Chọn loại phòng và ngày trước --</option>');
+            // Duration input change - auto calculate checkout date
+            $('#durationInput, #durationUnit').on('change input', calculateCheckOutFromDuration);
+
+            // Check-in date change - recalculate checkout if duration is set
+            $('#checkInDateFilter').on('change', calculateCheckOutFromDuration);
+
+            // Filter button click event
+            $('#filterButton').click(function () {
+                if (validateDates()) {
+                    loadRoomGrid();
                 }
-            }
+            });
 
-            // Load pricing options when room is selected
-            function loadPricingOptions() {
-                var roomId = $('select[name="RoomID"]').val();
-                var categoryId = $('#roomCategorySelect').val();
+    
+            // Form submission handler
+            $('#reservationForm').on('submit', function (event) {
+                // Copy values from filter to hidden fields
+                $('#checkInDateHidden').val($('#checkInDateFilter').val());
+                $('#checkOutDateHidden').val($('#checkOutDateFilter').val());
 
-                if (roomId && categoryId) {
-                    $.ajax({
-                        url: '@Url.Action("GetPricingOptions", "Room")',
-                        type: 'GET',
-                        data: { categoryId: categoryId },
-                        success: function (data) {
-                            var priceSelect = $('#priceUnitSelect');
-                            priceSelect.empty();
-                            priceSelect.append('<option value="">-- Chọn hình thức --</option>');
-
-                            if (data.length === 0) {
-                                priceSelect.append('<option value="" disabled>Không có giá</option>');
-                            } else {
-                                $.each(data, function (i, price) {
-                                    priceSelect.append($('<option></option>')
-                                        .attr('value', price.priceUnit)
-                                        .attr('data-amount', price.amount)
-                                        .text(price.priceUnit + ' - ' + price.amount.toLocaleString('vi-VN') + ' VNĐ'));
-                                });
-                            }
-                        },
-                        error: function () {
-                            alert('Lỗi khi tải giá phòng!');
-                        }
-                    });
-                } else {
-                    // Reset price dropdown
-                    $('#priceUnitSelect').empty()
-                        .append('<option value="">-- Chọn phòng trước --</option>');
+                // Validate before submit
+                if (!validateReservationForm(event)) {
+                    event.preventDefault();
+                    return false;
                 }
-            }
+                
+            });
 
-            // Calculate deposit suggestion (30% of room price)
-            function calculateDeposit() {
-                var priceUnit = $('#priceUnitSelect option:selected');
-                var amount = priceUnit.data('amount');
-
-                if (amount) {
-                    var deposit = Math.round(amount * 0.3);
-                    $('#depositSuggestion').text(deposit.toLocaleString('vi-VN') + ' VNĐ (30%)');
-                    $('input[name="RoomBookingDeposit"]').val(deposit);
-                } else {
-                    $('#depositSuggestion').text('---');
-                }
-            }
-
-            // Event handlers
-            $('#roomCategorySelect').change(loadAvailableRooms);
-            $('select[name="RoomID"]').change(loadPricingOptions);
             $('#priceUnitSelect').change(calculateDeposit);
-            $('input[name="CheckInDate"], input[name="CheckOutDate"]').change(loadAvailableRooms);
+            
+            // Cập nhật countdown mỗi 60 giây
+            setInterval(updateCountdowns, 1000);
+            updateCountdowns();
         });
+
+        // Set current time to check-in input
+        function setCurrentTimeCheckIn() {
+            const now = new Date();
+            const utcPlus7 = new Date(now.getTime() + (7 * 60 * 60 * 1000)); 
+            utcPlus7.setMinutes(utcPlus7.getMinutes() + 1);
+            const checkInStr = utcPlus7.toISOString().slice(0, 16);
+            $('#checkInDateFilter').val(checkInStr);
+            
+            calculateCheckOutFromDuration();
+            
+            // Validate dates
+            validateDates();
+        }
+
+        // Calculate checkout date from duration
+        function calculateCheckOutFromDuration() {
+            const duration = parseInt($('#durationInput').val());
+            const unit = $('#durationUnit').val();
+            const checkInStr = $('#checkInDateFilter').val();
+        
+            if (!duration || !checkInStr || duration <= 0) {
+                return;
+            }
+        
+            // Lấy đúng thời gian check-in theo local (input datetime-local luôn trả về local time)
+            let checkInDate = new Date(checkInStr);
+        
+            // Cộng thời lượng
+            let checkOutDate = new Date(checkInDate);
+            if (unit === 'hour') {
+                checkOutDate.setHours(checkOutDate.getHours() + duration);
+            } else if (unit === 'day') {
+                checkOutDate.setDate(checkOutDate.getDate() + duration);
+            }
+        
+            // Đưa về dạng yyyy-MM-ddTHH:mm cho input datetime-local
+            // (toISOString trả về UTC, cần chuyển về local)
+            const pad = n => n.toString().padStart(2, '0');
+            const localStr = checkOutDate.getFullYear() + '-' +
+                pad(checkOutDate.getMonth() + 1) + '-' +
+                pad(checkOutDate.getDate()) + 'T' +
+                pad(checkOutDate.getHours()) + ':' +
+                pad(checkOutDate.getMinutes());
+        
+            $('#checkOutDateFilter').val(localStr);
+        
+            // Validate dates after setting
+            validateDates();
+        }
+
+        // Set default dates (today + 1 hour for check-in, tomorrow for check-out)
+        function setDefaultDates() {
+            const now = new Date();
+            const utcPlus7 = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Cộng thêm 7 giờ
+        
+            utcPlus7.setHours(utcPlus7.getHours() + 1);
+            utcPlus7.setMinutes(0);
+            const checkInStr = utcPlus7.toISOString().slice(0, 16);
+        
+            const tomorrow = new Date(utcPlus7);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const checkOutStr = tomorrow.toISOString().slice(0, 16);
+        
+            $('#checkInDateFilter').val(checkInStr);
+            $('#checkOutDateFilter').val(checkOutStr);
+        }
+        
+        // Validate dates
+        function validateDates() {
+            const checkInDate = new Date($('#checkInDateFilter').val());
+            const checkOutDate = new Date($('#checkOutDateFilter').val());
+            const now = new Date();
+
+            let isValid = true;
+
+            $('#checkInDateError, #checkOutDateError').hide().text('');
+
+            if (checkInDate < now) {
+                $('#checkInDateError').text('Ngày nhận phòng phải từ hiện tại trở đi').show();
+                isValid = false;
+            }
+
+            if (checkOutDate <= checkInDate) {
+                $('#checkOutDateError').text('Ngày trả phòng phải sau ngày nhận phòng').show();
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        // Load room grid
+        function loadRoomGrid() {
+            const categoryId = $('#categoryFilter').val();
+            const checkIn = $('#checkInDateFilter').val();
+            const checkOut = $('#checkOutDateFilter').val();
+
+            if (!validateDates()) {
+                $('#roomGrid').html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Vui lòng chọn ngày nhận và trả phòng hợp lệ</div>');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetAvailableRoomsByCategory", "Room")',
+                type: 'GET',
+                data: { categoryId: categoryId, checkInDate: checkIn, checkOutDate: checkOut },
+                success: function (html) {
+                    @* console.log(html); *@
+                    renderRoomCards(categoryId, checkIn, checkOut);
+                },
+                error: function () {
+                    $('#roomGrid').html('<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Lỗi khi tải danh sách phòng!</div>');
+                }
+            });
+        }
+
+        // Render room cards with reservation info and countdown
+        function renderRoomCards(categoryId, checkIn, checkOut) {
+            const grid = $('#roomGrid');
+            grid.empty();
+            grid.html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i> Đang tải...</div>');
+
+            // Gọi API mới để lấy phòng với thông tin reservation
+            $.ajax({
+                url: '@Url.Action("GetRoomsWithReservations", "Room")',
+                type: 'GET',
+                data: { categoryId: categoryId, checkInDate: checkIn, checkOutDate: checkOut },
+                success: function(rooms) {
+                    grid.empty();
+
+                    console.log(rooms);
+                    
+                    let totalCount = 0;
+                    let availableCount = 0;
+                    let onuseCount = 0;
+                    let reservedCount = 0;
+                    let occupiedCount = 0;
+
+                    rooms.forEach(room => {
+                        totalCount++;
+                        let statusClass = '';
+                        let statusText = '';
+                        let statusIcon = '';
+                        let countdownBadge = '';
+
+                        // Kiểm tra có reservation sắp đến không
+                        if (room.upcomingReservation && room.upcomingReservation.isNearCheckIn) {
+                            const hours = Math.floor(room.upcomingReservation.hoursUntilCheckIn);
+                            const minutes = Math.floor((room.upcomingReservation.hoursUntilCheckIn - hours) * 60);
+                            countdownBadge = `
+                                <div class="countdown-badge" data-checkin="${room.upcomingReservation.checkInDate}">
+                                    <i class="fas fa-clock"></i> Sắp nhận: ${hours}h ${minutes}m
+                                </div>
+                            `;
+                        }
+
+                        switch (room.roomStatus) {
+                            case 'AVAILABLE':
+                                statusClass = 'available';
+                                statusText = 'Trống';
+                                statusIcon = '<i class="fas fa-check-circle room-icon"></i>';
+                                availableCount++;
+                                break;
+                            case 'RESERVED':
+                                statusClass = 'reserved';
+                                statusText = 'Đã đặt';
+                                statusIcon = '<i class="fas fa-calendar-check room-icon"></i>';
+                                reservedCount++;
+                                break;
+                            case 'OVERDUE':
+                                statusClass = 'overdue';
+                                statusText = 'Quá hạn';
+                                statusIcon = '<i class="fas fa-hourglass-end room-icon"></i>';
+                                occupiedCount++;
+                                break;
+                            case 'ON_USE':
+                                statusClass = 'onuse';
+                                statusText = 'Đang sử dụng';
+                                statusIcon = '<i class="fas fa-calendar-check room-icon"></i>';
+                                onuseCount++;
+                                break;
+                        }
+
+                        const isSelected = selectedRoomId === room.roomID;
+                        
+                        // Format giá theo VNĐ
+                        const hourPriceFormatted = room.hourPrice ? room.hourPrice.toLocaleString('vi-VN') : 'N/A';
+                        const dayPriceFormatted = room.dayPrice ? room.dayPrice.toLocaleString('vi-VN') : 'N/A';
+                        
+                        const cardHtml = `
+                            <div class="room-card ${statusClass} ${isSelected ? 'selected' : ''}" 
+                                 onclick="selectRoom('${room.roomID}', '${room.roomCategoryName}', '${room.roomCategoryID}', '${room.roomStatus}', this)">
+                                ${countdownBadge}
+                                <div class="room-card-body">
+                                    ${statusIcon}
+                                    <div class="room-number">${room.roomID}</div>
+                                    <div class="room-status">${statusText}</div>
+                                    <div class="room-category">${room.roomCategoryName}</div>
+                                    <div class="room-pricing">
+                                        <div class="price-item">
+                                            <span class="price-label"><i class="fas fa-clock"></i> Giờ:</span>
+                                            <span class="price-value">${hourPriceFormatted} đ</span>
+                                        </div>
+                                        <div class="price-item">
+                                            <span class="price-label"><i class="fas fa-calendar-day"></i> Ngày:</span>
+                                            <span class="price-value">${dayPriceFormatted} đ</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        grid.append(cardHtml);
+                    });
+
+                    // Update counters
+                    $('#totalRooms').text(totalCount);
+                    $('#availableRooms').text(availableCount);
+                    $('#onuseRooms').text(onuseCount);
+                    $('#reservedRooms').text(reservedCount);
+                    $('#occupiedRooms').text(occupiedCount);
+
+                    if (totalCount === 0) {
+                        grid.html('<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Không có phòng nào phù hợp với bộ lọc</div>');
+                    }
+
+                    // Bắt đầu cập nhật countdown
+                    updateCountdowns();
+                },
+                error: function() {
+                    grid.html('<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Lỗi khi tải danh sách phòng!</div>');
+                }
+            });
+        }
+
+        // Cập nhật countdown mỗi phút
+        function updateCountdowns() {
+            $('.countdown-badge').each(function() {
+                const checkInDate = new Date($(this).data('checkin'));
+                const now = new Date();
+                const diff = checkInDate - now;
+
+                if (diff > 0) {
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    $(this).html(`<i class="fas fa-clock"></i> Sắp nhận: ${hours} : ${minutes} : ${seconds}`);
+                } else {
+                    $(this).html('<i class="fas fa-check"></i> Đã đến giờ');
+                }
+            });
+        }
+
+        // Select a room
+        function selectRoom(roomId, categoryName, categoryId, status, element) {
+            if (status !== 'AVAILABLE') {
+                alert('Phòng này không khả dụng!');
+                return;
+            }
+
+            // Remove previous selection
+            $('.room-card').removeClass('selected');
+            $(element).addClass('selected');
+
+            // Update form
+            selectedRoomId = roomId;
+            $('#roomIdHidden').val(roomId);
+            
+            // Show selected room info
+            $('#selectedRoomText').text(`${roomId} - ${categoryName}`);
+            $('#selectedRoomDisplay').show();
+
+            // Load pricing options for this category
+            loadPricingOptions(categoryId);
+
+            // Scroll to form
+            $('html, body').animate({
+                scrollTop: $('#reservationForm').offset().top - 100
+            }, 500);
+        }
+
+        // Clear room selection
+        function clearRoomSelection() {
+            selectedRoomId = null;
+            $('#roomIdHidden').val('');
+            $('.room-card').removeClass('selected');
+            $('#selectedRoomDisplay').hide();
+            $('#priceUnitSelect').empty().append('<option value="">-- Chọn phòng trước --</option>');
+            $('#depositSuggestion').text('---');
+        }
+
+        // Load pricing options
+        function loadPricingOptions(categoryId) {
+            if (categoryId) {
+                $.ajax({
+                    url: '@Url.Action("GetPricingOptions", "Room")',
+                    type: 'GET',
+                    data: { categoryId: categoryId },
+                    success: function (data) {
+                        var priceSelect = $('#priceUnitSelect');
+                        priceSelect.empty();
+                        priceSelect.append('<option value="">-- Chọn hình thức --</option>');
+
+                        if (data.length === 0) {
+                            priceSelect.append('<option value="" disabled>Không có giá</option>');
+                        } else {
+                            $.each(data, function (i, price) {
+                                priceSelect.append($('<option></option>')
+                                    .attr('value', price.priceUnit)
+                                    .attr('data-amount', price.amount)
+                                    .text(price.priceUnit + ' - ' + price.amount.toLocaleString('vi-VN') + ' VNĐ'));
+                            });
+                        }
+                    },
+                    error: function () {
+                        alert('Lỗi khi tải giá phòng!');
+                    }
+                });
+            } else {
+                $('#priceUnitSelect').empty()
+                    .append('<option value="">-- Chọn phòng trước --</option>');
+            }
+        }
+
+        // Calculate deposit suggestion (30% of room price)
+        function calculateDeposit() {
+            var priceUnit = $('#priceUnitSelect option:selected');
+            var priceUnitValue = priceUnit.val();
+            var amount = priceUnit.data('amount');
+
+            if (amount && priceUnitValue) {
+                // Populate hidden fields for form submission
+                $('#priceUnitHidden').val(priceUnitValue);
+                $('#unitPriceHidden').val(amount);
+                
+                var deposit = Math.round(amount * 0.3);
+                $('#depositSuggestion').text(deposit.toLocaleString('vi-VN') + ' VNĐ (30%)');
+                $('input[name="RoomBookingDeposit"]').val(deposit);
+            } else {
+                $('#depositSuggestion').text('---');
+                $('#priceUnitHidden').val('');
+                $('#unitPriceHidden').val('');
+            }
+        }
+
+        // Validate reservation form before submit
+        function validateReservationForm(event) {
+            let isValid = true;
+
+            // Validate dates
+            if (!validateDates()) {
+                isValid = false;
+            }
+
+            // Validate room selection
+            if (!selectedRoomId) {
+                alert('Vui lòng chọn phòng!');
+                isValid = false;
+            }
+
+            // Validate customer
+            if (!$('select[name="CustomerID"]').val()) {
+                alert('Vui lòng chọn khách hàng!');
+                isValid = false;
+            }
+
+            // Validate price unit and unit price
+            if (!$('#priceUnitSelect').val() || !$('#priceUnitHidden').val() || !$('#unitPriceHidden').val()) {
+                alert('Vui lòng chọn hình thức thuê!');
+                isValid = false;
+            }
+
+            return isValid;
+        }
     </script>
 }
 
@@ -322,5 +967,69 @@
 </div>
 
 <script>
+    // Save Quick Customer via AJAX
+    function saveQuickCustomer() {
+        var form = $('#quickCustomerForm');
+        var formData = {
+            FullName: form.find('input[name="FullName"]').val(),
+            Gender: form.find('select[name="Gender"]').val(),
+            PhoneNumber: form.find('input[name="PhoneNumber"]').val(),
+            Email: form.find('input[name="Email"]').val(),
+            IdCardNumber: form.find('input[name="IdCardNumber"]').val(),
+            Dob: form.find('input[name="Dob"]').val(),
+            Address: form.find('input[name="Address"]').val()
+        };
 
+        // Client-side validation
+        if (!validatePhoneNumber(formData.PhoneNumber)) {
+            $('#phoneNumberError').text('Số điện thoại phải có 10 chữ số và bắt đầu bằng 0').show();
+            return;
+        } else {
+            $('#phoneNumberError').hide();
+        }
+
+        if (!validateCCCD(formData.IdCardNumber)) {
+            $('#cccdError').text('Số CCCD phải có 12 chữ số').show();
+            return;
+        } else {
+            $('#cccdError').hide();
+        }
+
+        if (!validateAge(formData.Dob)) {
+            $('#dobError').text('Khách hàng phải từ 18 tuổi trở lên').show();
+            return;
+        } else {
+            $('#dobError').hide();
+        }
+
+        // Send AJAX request
+        $.ajax({
+            url: '/Customer/QuickCreate',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function (response) {
+                if (response.success) {
+                    var customerSelect = $('select[name="CustomerID"]');
+                    customerSelect.append($('<option></option>')
+                        .attr('value', response.customerID)
+                        .attr('selected', 'selected')
+                        .text(response.fullName + ' - ' + response.phoneNumber));
+
+                    $('#addCustomerModal').modal('hide');
+                    form[0].reset();
+                    alert('Thêm khách hàng thành công!');
+                } else {
+                    alert('Lỗi: ' + response.message);
+                }
+            },
+            error: function (xhr) {
+                var errorMsg = 'Lỗi khi thêm khách hàng!';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
+            }
+        });
+    }
 </script>

@@ -25,11 +25,18 @@ namespace HotelManagement.Models
         [StringLength(15)]
         public string? EmployeeID { get; set; }
 
+        [Column("invoiceID")]
+        [StringLength(15)]
+        public string? InvoiceID { get; set; }
+
         // Navigation properties
         [ForeignKey("ReservationFormID")]
         public virtual ReservationForm? ReservationForm { get; set; }
 
         [ForeignKey("EmployeeID")]
         public virtual Employee? Employee { get; set; }
+
+        [ForeignKey("InvoiceID")]
+        public virtual Invoice? Invoice { get; set; }
     }
 }

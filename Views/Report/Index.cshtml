@@ -118,3 +118,185 @@
         </div>
     </div>
 </div>
+
+<!-- Charts Section -->
+<div class="row g-4 mt-4">
+    <!-- Revenue Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.4s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-bar me-2"></i>Doanh thu 6 tháng gần đây
+            </div>
+            <div class="card-body-modern">
+                <canvas id="revenueChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Occupancy Pie Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-pie me-2"></i>Phân bố loại phòng (Tháng này)
+            </div>
+            <div class="card-body-modern">
+                <canvas id="roomOccupancyChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Trend Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-line me-2"></i>Xu hướng đặt phòng (30 ngày)
+            </div>
+            <div class="card-body-modern">
+                <canvas id="bookingTrendChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Performance Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+            <div class="card-header-modern">
+                <i class="fas fa-user-chart me-2"></i>Top 10 Nhân viên (Check-in tháng này)
+            </div>
+            <div class="card-body-modern">
+                <canvas id="employeePerformanceChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Fetch và render Revenue Chart
+    fetch('/Report/GetRevenueChartData?months=6')
+        .then(res => res.json())
+        .then(data => {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('vi-VN') + ' đ';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error('Error loading revenue chart:', err));
+
+    // Fetch và render Room Occupancy Pie Chart
+    fetch('/Report/GetRoomOccupancyChartData')
+        .then(res => res.json())
+        .then(data => {
+            const ctx = document.getElementById('roomOccupancyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed + ' lượt';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error('Error loading room occupancy chart:', err));
+
+    // Fetch và render Booking Trend Line Chart
+    fetch('/Report/GetBookingTrendChartData?days=30')
+        .then(res => res.json())
+        .then(data => {
+            const ctx = document.getElementById('bookingTrendChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error('Error loading booking trend chart:', err));
+
+    // Fetch và render Employee Performance Bar Chart
+    fetch('/Report/GetEmployeePerformanceChartData?topN=10')
+        .then(res => res.json())
+        .then(data => {
+            const ctx = document.getElementById('employeePerformanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error('Error loading employee performance chart:', err));
+</script>
+}
+

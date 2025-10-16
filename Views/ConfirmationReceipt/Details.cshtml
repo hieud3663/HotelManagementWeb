@@ -1,0 +1,383 @@
+@model HotelManagement.Models.ConfirmationReceipt
+
+@{
+    ViewData["Title"] = Model.ReceiptType == "RESERVATION" ? "Phiếu Xác Nhận Đặt Phòng" : "Phiếu Xác Nhận Nhận Phòng";
+    var receiptTypeText = Model.ReceiptType == "RESERVATION" ? "ĐẶT PHÒNG" : "NHẬN PHÒNG";
+}
+
+<style>
+    @@media print {
+        .no-print {
+            display: none !important;
+        }
+        .receipt-container {
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 20px !important;
+        }
+        @@page {
+            size: A4;
+            margin: 1cm;
+        }
+    }
+
+    .receipt-container {
+        max-width: 800px;
+        margin: 30px auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        border-radius: 8px;
+    }
+
+    .receipt-header {
+        text-align: center;
+        border-bottom: 3px double #333;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+
+    .hotel-logo {
+        font-size: 36px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .hotel-info {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .receipt-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #e74c3c;
+        margin: 20px 0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .receipt-id {
+        font-size: 16px;
+        color: #34495e;
+        margin-bottom: 10px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 25px 0 15px 0;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .info-table {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .info-table td {
+        padding: 8px;
+        vertical-align: top;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #555;
+        width: 180px;
+    }
+
+    .info-value {
+        color: #333;
+    }
+
+    .highlight-box {
+        background: #f8f9fa;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+    }
+
+    .price-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+    }
+
+    .qr-code-section {
+        text-align: center;
+        margin: 30px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .footer-section {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 2px solid #ecf0f1;
+    }
+
+    .signature-box {
+        display: inline-block;
+        text-align: center;
+        min-width: 200px;
+        margin: 20px 40px;
+    }
+
+    .signature-line {
+        border-top: 1px solid #333;
+        margin-top: 60px;
+        padding-top: 5px;
+        font-weight: 600;
+    }
+
+    .notes-section {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 20px;
+        font-size: 13px;
+        color: #555;
+    }
+
+    .btn-print {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-print:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .btn-back {
+        background: #95a5a6;
+        color: white;
+        text-decoration: none;
+        padding: 12px 30px;
+        border-radius: 4px;
+        font-size: 16px;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+
+    .btn-back:hover {
+        background: #7f8c8d;
+        color: white;
+        transform: translateY(-2px);
+    }
+</style>
+
+<!-- Action Buttons (Hidden when printing) -->
+<div class="no-print text-center mb-4">
+    <button onclick="window.print()" class="btn-print">
+        <i class="fas fa-print"></i> In Phiếu
+    </button>
+    <a href="@Url.Action("Index", "Dashboard")" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Quay lại
+    </a>
+</div>
+
+<!-- Receipt Container -->
+<div class="receipt-container">
+    <!-- Header -->
+    <div class="receipt-header">
+        <div class="hotel-logo">🏨 HOTEL MANAGEMENT</div>
+        <div class="hotel-info">
+            Địa chỉ: 123 Đường ABC, Quận XYZ, TP.HCM<br>
+            Điện thoại: (028) 1234-5678 | Email: info@hotelmanagement.vn<br>
+            Website: www.hotelmanagement.vn
+        </div>
+    </div>
+
+    <!-- Title -->
+    <div class="receipt-title">
+        PHIẾU XÁC NHẬN @receiptTypeText
+    </div>
+    
+    <div class="receipt-id">
+        Mã phiếu: <strong>@Model.ReceiptID</strong>
+    </div>
+    <div class="info-value">
+        Ngày phát hành: <strong>@Model.IssueDate.ToString("dd/MM/yyyy HH:mm")</strong>
+    </div>
+
+    <!-- Customer Information -->
+    <div class="section-title">
+        <i class="fas fa-user"></i> THÔNG TIN KHÁCH HÀNG
+    </div>
+    <table class="info-table">
+        <tr>
+            <td class="info-label">Họ và tên:</td>
+            <td class="info-value"><strong>@Model.CustomerName</strong></td>
+        </tr>
+        <tr>
+            <td class="info-label">Số điện thoại:</td>
+            <td class="info-value">@Model.CustomerPhone</td>
+        </tr>
+        @if (!string.IsNullOrEmpty(Model.CustomerEmail))
+        {
+            <tr>
+                <td class="info-label">Email:</td>
+                <td class="info-value">@Model.CustomerEmail</td>
+            </tr>
+        }
+    </table>
+
+    <!-- Room Information -->
+    <div class="section-title">
+        <i class="fas fa-door-open"></i> THÔNG TIN PHÒNG
+    </div>
+    <div class="highlight-box">
+        <table class="info-table">
+            <tr>
+                <td class="info-label">Số phòng:</td>
+                <td class="info-value"><strong style="font-size: 20px; color: #e74c3c;">@Model.RoomID</strong></td>
+            </tr>
+            <tr>
+                <td class="info-label">Loại phòng:</td>
+                <td class="info-value">@Model.RoomCategoryName</td>
+            </tr>
+            <tr>
+                <td class="info-label">Thời gian nhận phòng:</td>
+                <td class="info-value"><strong>@Model.CheckInDate.ToString("dd/MM/yyyy HH:mm")</strong></td>
+            </tr>
+            @if (Model.CheckOutDate.HasValue)
+            {
+                <tr>
+                    <td class="info-label">Thời gian trả phòng (dự kiến):</td>
+                    <td class="info-value"><strong>@Model.CheckOutDate.Value.ToString("dd/MM/yyyy HH:mm")</strong></td>
+                </tr>
+                <tr>
+                    <td class="info-label">Thời gian lưu trú:</td>
+                    <td class="info-value">
+                        @{
+                            var duration = Model.CheckOutDate.Value - Model.CheckInDate;
+                            var days = duration.Days;
+                            var hours = duration.Hours;
+                        }
+                        <strong>@days ngày @hours giờ</strong>
+                    </td>
+                </tr>
+            }
+        </table>
+    </div>
+
+    <!-- Pricing Information -->
+    @if (Model.UnitPrice.HasValue)
+    {
+        <div class="section-title">
+            <i class="fas fa-money-bill-wave"></i> THÔNG TIN GIÁ
+        </div>
+        <div class="price-box">
+            <table class="info-table">
+                <tr>
+                    <td class="info-label">Hình thức thuê:</td>
+                    <td class="info-value">
+                        <strong>@(Model.PriceUnit == "DAY" ? "Theo ngày" : "Theo giờ")</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="info-label">Đơn giá:</td>
+                    <td class="info-value">
+                        <strong style="color: #e74c3c; font-size: 18px;">
+                            @Model.UnitPrice.Value.ToString("N0") VNĐ / @(Model.PriceUnit == "DAY" ? "ngày" : "giờ")
+                        </strong>
+                    </td>
+                </tr>
+                @if (Model.Deposit.HasValue && Model.Deposit > 0)
+                {
+                    <tr>
+                        <td class="info-label">Tiền đặt cọc:</td>
+                        <td class="info-value">
+                            <strong>@Model.Deposit.Value.ToString("N0") VNĐ</strong>
+                        </td>
+                    </tr>
+                }
+                @if (Model.TotalAmount.HasValue)
+                {
+                    <tr>
+                        <td class="info-label">Tổng tiền (dự kiến):</td>
+                        <td class="info-value">
+                            <strong style="color: #27ae60; font-size: 20px;">
+                                @Model.TotalAmount.Value.ToString("N0") VNĐ
+                            </strong>
+                        </td>
+                    </tr>
+                }
+            </table>
+        </div>
+    }
+
+    <!-- QR Code Section -->
+    @if (!string.IsNullOrEmpty(Model.QrCode))
+    {
+        <div class="qr-code-section">
+            <p style="margin-bottom: 10px; color: #666;">Quét mã QR để xác minh phiếu</p>
+            <!-- Placeholder for QR Code - In thực tế có thể dùng thư viện như QRCoder -->
+            <div style="width: 150px; height: 150px; border: 2px dashed #ccc; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: white;">
+                <span style="color: #999; font-size: 12px;">QR Code</span>
+            </div>
+            <small style="color: #999; display: block; margin-top: 10px;">@Model.QrCode</small>
+        </div>
+    }
+
+    <!-- Notes -->
+    <div class="notes-section">
+        <strong><i class="fas fa-info-circle"></i> Lưu ý:</strong>
+        <ul style="margin: 10px 0 0 20px; padding: 0;">
+            <li>Vui lòng mang theo CMND/CCCD khi nhận phòng</li>
+            <li>Giờ nhận phòng tiêu chuẩn: 14:00 | Giờ trả phòng: 12:00</li>
+            <li>Phiếu xác nhận này là bằng chứng đặt phòng, vui lòng giữ cẩn thận</li>
+            @if (Model.ReceiptType == "RESERVATION")
+            {
+                <li>Để hủy đặt phòng, vui lòng liên hệ trước 24 giờ</li>
+            }
+        </ul>
+    </div>
+
+    <!-- Footer with Signatures -->
+    <div class="footer-section">
+        <div style="text-align: center;">
+            <div class="signature-box" style="float: left;">
+                <div style="font-weight: 600; margin-bottom: 10px;">KHÁCH HÀNG</div>
+                <div class="signature-line">@Model.CustomerName</div>
+            </div>
+            
+            <div class="signature-box" style="float: right;">
+                <div style="font-weight: 600; margin-bottom: 10px;">NHÂN VIÊN LẬP PHIẾU</div>
+                <div class="signature-line">@Model.EmployeeName</div>
+            </div>
+            
+            <div style="clear: both;"></div>
+        </div>
+    </div>
+
+    <!-- Timestamp -->
+    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #999; font-size: 12px;">
+        <i class="fas fa-clock"></i> In lúc: @DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto focus on print button
+        $(document).ready(function() {
+            console.log('Confirmation receipt loaded: @Model.ReceiptID');
+        });
+    </script>
+}

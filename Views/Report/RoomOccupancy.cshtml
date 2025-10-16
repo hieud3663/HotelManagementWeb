@@ -97,7 +97,7 @@
             <div class="card-body-modern">
                 @if (ViewBag.OccupancyByRoomType != null && ViewBag.OccupancyByRoomType.Count > 0)
                 {
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 ">
                         <thead class="table-light">
                             <tr>
                                 <th>Loại phòng</th>
@@ -164,8 +164,35 @@
     </div>
 </div>
 
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <!-- Room Type Occupancy Pie Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-pie me-2"></i>Biểu đồ Phân bố Check-in theo Loại phòng
+            </div>
+            <div class="card-body-modern">
+                <canvas id="roomTypeOccupancyChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Daily Check-in Line Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.8s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-line me-2"></i>Biểu đồ Lượt Check-in theo Ngày
+            </div>
+            <div class="card-body-modern">
+                <canvas id="dailyCheckInChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Detailed Check-in List -->
-<div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+<div class="card-modern fade-in-up" style="animation-delay: 0.9s">
     <div class="card-header-modern">
         <i class="fas fa-list me-2"></i>Chi tiết Lịch sử Check-in
     </div>
@@ -173,7 +200,7 @@
         @if (Model.Any())
         {
             <div class="table-responsive">
-                <table class="table-modern mb-0">
+                <table class="table-modern mb-0 w-100">
                     <thead>
                         <tr>
                             <th>Mã ĐP</th>
@@ -229,3 +256,104 @@
         <i class="fas fa-print"></i> In báo cáo
     </button>
 </div>
+
+@section Scripts {
+<script>
+// 1. Room Type Occupancy Pie Chart
+@if (ViewBag.OccupancyByRoomType != null && ViewBag.OccupancyByRoomType.Count > 0)
+{
+    <text>
+    const roomTypeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.OccupancyByRoomType));
+    const ctxRoomType = document.getElementById('roomTypeOccupancyChart').getContext('2d');
+    new Chart(ctxRoomType, {
+        type: 'doughnut',
+        data: {
+            labels: roomTypeData.map(r => r.RoomType),
+            datasets: [{
+                label: 'Lượt check-in',
+                data: roomTypeData.map(r => r.CheckIns),
+                backgroundColor: [
+                    '#4e73df',
+                    '#1cc88a',
+                    '#36b9cc',
+                    '#f6c23e',
+                    '#e74a3b',
+                    '#858796'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return label + ': ' + value + ' lượt (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    </text>
+}
+
+// 2. Daily Check-in Line Chart
+@if (ViewBag.DailyOccupancy != null && ViewBag.DailyOccupancy.Count > 0)
+{
+    <text>
+    const dailyData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.DailyOccupancy));
+    const ctxDaily = document.getElementById('dailyCheckInChart').getContext('2d');
+    new Chart(ctxDaily, {
+        type: 'line',
+        data: {
+            labels: dailyData.map(d => new Date(d.Date).toLocaleDateString('vi-VN')),
+            datasets: [{
+                label: 'Lượt check-in',
+                data: dailyData.map(d => d.CheckIns),
+                borderColor: '#1cc88a',
+                backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Check-in: ' + context.parsed.y + ' lượt';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    </text>
+}
+</script>
+}

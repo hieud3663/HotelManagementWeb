@@ -127,9 +127,22 @@
 </div>
 
 <div class="mt-4">
-    <a asp-action="Edit" asp-route-id="@Model.RoomID" class="btn btn-warning-modern">
-        <i class="fas fa-edit"></i> Chỉnh sửa
-    </a>
+    @{
+        var canModify = Model.RoomStatus == "AVAILABLE";
+    }
+    
+    @if (canModify)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.RoomID" class="btn btn-warning-modern">
+            <i class="fas fa-edit"></i> Chỉnh sửa
+        </a>
+    }
+    else
+    {
+        <button class="btn btn-secondary" disabled title="Không thể sửa phòng đang sử dụng hoặc đã đặt">
+            <i class="fas fa-lock"></i> Chỉnh sửa
+        </button>
+    }
     <a asp-action="Index" class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i> Quay lại
     </a>

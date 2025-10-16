@@ -1,0 +1,132 @@
+@model HotelManagement.Models.RoomCategory
+
+@{
+    ViewData["Title"] = "Chỉnh sửa loại phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-edit"></i>
+        Chỉnh sửa: @Model.RoomCategoryName
+    </h1>
+    <p>Cập nhật thông tin loại phòng và bảng giá #@Model.RoomCategoryID</p>
+</div>
+
+<!-- Form Card -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-edit me-2"></i>Thông tin Loại phòng
+    </div>
+    <div class="card-body-modern">
+        <form asp-action="Edit" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            
+            <input type="hidden" asp-for="RoomCategoryID" />
+            
+            <div class="row g-3">
+                <!-- Thông tin cơ bản -->
+                <div class="col-12">
+                    <h5 class="border-bottom pb-2">
+                        <i class="fas fa-bed me-2"></i>Thông tin cơ bản
+                    </h5>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="RoomCategoryName" class="form-label required">
+                        <i class="fas fa-tag"></i> Tên loại phòng
+                    </label>
+                    <input asp-for="RoomCategoryName" class="form-control" />
+                    <span asp-validation-for="RoomCategoryName" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="NumberOfBed" class="form-label required">
+                        <i class="fas fa-bed"></i> Số giường
+                    </label>
+                    <input asp-for="NumberOfBed" type="number" min="1" max="10" class="form-control" />
+                    <span asp-validation-for="NumberOfBed" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="IsActivate" class="form-label required">
+                        <i class="fas fa-toggle-on"></i> Trạng thái
+                    </label>
+                    <select asp-for="IsActivate" class="form-select">
+                        <option value="ACTIVATE">Hoạt động</option>
+                        <option value="DEACTIVATE">Vô hiệu hóa</option>
+                    </select>
+                    <span asp-validation-for="IsActivate" class="text-danger"></span>
+                </div>
+
+                <!-- Bảng giá -->
+                <div class="col-12 mt-4">
+                    <h5 class="border-bottom pb-2">
+                        <i class="fas fa-money-bill-wave me-2"></i>Bảng giá (VNĐ)
+                    </h5>
+                    <p class="text-muted small">
+                        <i class="fas fa-info-circle"></i> Để trống để xóa mức giá đó. Thay đổi giá chỉ áp dụng cho đặt phòng mới.
+                    </p>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="priceHour" class="form-label">
+                        <i class="fas fa-clock"></i> Giá theo giờ
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="priceHour" id="priceHour" class="form-control" 
+                               value="@ViewBag.PriceHour" min="0" step="10000" />
+                        <span class="input-group-text">VNĐ/giờ</span>
+                    </div>
+                    <small class="text-muted">
+                        @if (ViewBag.PriceHour != null)
+                        {
+                            <span class="text-success">✓ Hiện tại: @(((decimal)ViewBag.PriceHour).ToString("N0")) VNĐ/giờ</span>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Chưa có giá theo giờ</span>
+                        }
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="priceDay" class="form-label">
+                        <i class="fas fa-calendar-day"></i> Giá theo ngày
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="priceDay" id="priceDay" class="form-control" 
+                               value="@ViewBag.PriceDay" min="0" step="10000" />
+                        <span class="input-group-text">VNĐ/ngày</span>
+                    </div>
+                    <small class="text-muted">
+                        @if (ViewBag.PriceDay != null)
+                        {
+                            <span class="text-success">✓ Hiện tại: @(((decimal)ViewBag.PriceDay).ToString("N0")) VNĐ/ngày</span>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Chưa có giá theo ngày</span>
+                        }
+                    </small>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary-modern">
+                    <i class="fas fa-save"></i> Lưu thay đổi
+                </button>
+                <a asp-action="Index" class="btn btn-secondary-modern">
+                    <i class="fas fa-times"></i> Hủy
+                </a>
+                <a asp-action="Details" asp-route-id="@Model.RoomCategoryID" class="btn btn-info-modern">
+                    <i class="fas fa-eye"></i> Xem chi tiết
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

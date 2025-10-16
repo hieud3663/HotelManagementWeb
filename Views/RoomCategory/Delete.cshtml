@@ -1,0 +1,105 @@
+@model HotelManagement.Models.RoomCategory
+
+@{
+    ViewData["Title"] = "Xóa loại phòng";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1 class="text-danger">
+        <i class="fas fa-trash"></i>
+        Xác nhận xóa loại phòng
+    </h1>
+    <p>Bạn có chắc chắn muốn xóa loại phòng này?</p>
+</div>
+
+<!-- Delete Confirmation Card -->
+<div class="card-modern fade-in-up border-danger">
+    <div class="card-header-modern bg-danger text-white">
+        <i class="fas fa-exclamation-triangle me-2"></i>Xóa: @Model.RoomCategoryName
+    </div>
+    <div class="card-body-modern">
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác! Tất cả bảng giá liên quan sẽ bị xóa.
+        </div>
+
+        <dl class="row">
+            <dt class="col-sm-3"><i class="fas fa-hashtag"></i> Mã loại:</dt>
+            <dd class="col-sm-9"><strong class="text-primary">@Model.RoomCategoryID</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-tag"></i> Tên loại phòng:</dt>
+            <dd class="col-sm-9"><strong>@Model.RoomCategoryName</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-bed"></i> Số giường:</dt>
+            <dd class="col-sm-9">@Model.NumberOfBed giường</dd>
+
+            <dt class="col-sm-3"><i class="fas fa-clock"></i> Giá theo giờ:</dt>
+            <dd class="col-sm-9">
+                @{
+                    var priceHour = Model.Pricings?.FirstOrDefault(p => p.PriceUnit == "HOUR");
+                    if (priceHour != null)
+                    {
+                        <strong class="text-success">@priceHour.Price.ToString("N0") VNĐ/giờ</strong>
+                    }
+                    else
+                    {
+                        <em class="text-muted">Chưa có giá</em>
+                    }
+                }
+            </dd>
+
+            <dt class="col-sm-3"><i class="fas fa-calendar-day"></i> Giá theo ngày:</dt>
+            <dd class="col-sm-9">
+                @{
+                    var priceDay = Model.Pricings?.FirstOrDefault(p => p.PriceUnit == "DAY");
+                    if (priceDay != null)
+                    {
+                        <strong class="text-success">@priceDay.Price.ToString("N0") VNĐ/ngày</strong>
+                    }
+                    else
+                    {
+                        <em class="text-muted">Chưa có giá</em>
+                    }
+                }
+            </dd>
+
+            <dt class="col-sm-3"><i class="fas fa-door-open"></i> Số phòng đang dùng:</dt>
+            <dd class="col-sm-9">
+                @{
+                    var roomCount = Model.Rooms?.Count ?? 0;
+                }
+                <span class="badge-modern @(roomCount > 0 ? "badge-warning-modern" : "badge-secondary-modern")">
+                    @roomCount phòng
+                </span>
+                @if (roomCount > 0)
+                {
+                    <div class="alert alert-warning mt-2">
+                        <i class="fas fa-exclamation-circle"></i> <strong>Không thể xóa!</strong> Loại phòng này đang có @roomCount phòng đang sử dụng.
+                    </div>
+                }
+            </dd>
+        </dl>
+
+        <form asp-action="Delete" method="post" class="d-flex gap-2 mt-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="RoomCategoryID" />
+            @if (roomCount == 0)
+            {
+                <button type="submit" class="btn btn-danger-modern"
+                        onclick="return confirm('Bạn THỰC SỰ muốn xóa loại phòng này?');">
+                    <i class="fas fa-trash"></i> Xác nhận xóa
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-danger-modern" disabled>
+                    <i class="fas fa-ban"></i> Không thể xóa
+                </button>
+            }
+            <a asp-action="Index" class="btn btn-secondary-modern">
+                <i class="fas fa-arrow-left"></i> Quay lại
+            </a>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,84 @@
+@model HotelManagement.Models.HotelService
+
+@{
+    ViewData["Title"] = "Chi tiết dịch vụ";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-eye"></i>
+        Chi tiết dịch vụ: @Model.ServiceName
+    </h1>
+    <p>Thông tin chi tiết về dịch vụ #@Model.HotelServiceId</p>
+</div>
+
+<!-- Details Card -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-info-circle me-2"></i>Thông tin Dịch vụ
+    </div>
+    <div class="card-body-modern">
+        <dl class="row">
+            <dt class="col-sm-3"><i class="fas fa-hashtag"></i> Mã dịch vụ:</dt>
+            <dd class="col-sm-9"><strong class="text-primary">@Model.HotelServiceId</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-concierge-bell"></i> Tên dịch vụ:</dt>
+            <dd class="col-sm-9"><h5 class="mb-0">@Model.ServiceName</h5></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-tag"></i> Danh mục:</dt>
+            <dd class="col-sm-9">
+                <span class="badge-modern badge-info-modern">
+                    @Model.ServiceCategory?.ServiceCategoryName
+                </span>
+            </dd>
+
+            <dt class="col-sm-3"><i class="fas fa-money-bill"></i> Giá dịch vụ:</dt>
+            <dd class="col-sm-9">
+                <strong class="text-success fs-5">
+                    @Model.ServicePrice.ToString("N0") VNĐ
+                </strong>
+            </dd>
+
+            <dt class="col-sm-3"><i class="fas fa-align-left"></i> Mô tả:</dt>
+            <dd class="col-sm-9">
+                @if (string.IsNullOrEmpty(Model.Description))
+                {
+                    <em class="text-muted">Không có mô tả</em>
+                }
+                else
+                {
+                    <p>@Model.Description</p>
+                }
+            </dd>
+
+            <dt class="col-sm-3"><i class="fas fa-toggle-on"></i> Trạng thái:</dt>
+            <dd class="col-sm-9">
+                @if (Model.IsActivate == "ACTIVATE")
+                {
+                    <span class="badge-modern badge-success-modern">
+                        <i class="fas fa-check-circle"></i> Đang hoạt động
+                    </span>
+                }
+                else
+                {
+                    <span class="badge-modern badge-danger-modern">
+                        <i class="fas fa-times-circle"></i> Đã vô hiệu hóa
+                    </span>
+                }
+            </dd>
+        </dl>
+
+        <div class="d-flex gap-2 mt-4">
+            <a asp-action="Edit" asp-route-id="@Model.HotelServiceId" class="btn btn-warning-modern">
+                <i class="fas fa-edit"></i> Chỉnh sửa
+            </a>
+            <a asp-action="Delete" asp-route-id="@Model.HotelServiceId" class="btn btn-danger-modern">
+                <i class="fas fa-trash"></i> Xóa
+            </a>
+            <a asp-action="Index" class="btn btn-secondary-modern">
+                <i class="fas fa-list"></i> Quay lại danh sách
+            </a>
+        </div>
+    </div>
+</div>

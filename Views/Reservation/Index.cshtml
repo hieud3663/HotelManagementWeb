@@ -20,6 +20,22 @@
     </div>
 </div>
 
+<!-- Success/Error Messages -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show fade-in-up" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show fade-in-up" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <!-- Statistics -->
 @{
     var totalReservations = Model.Count();
@@ -51,6 +67,7 @@
                         <th><i class="fas fa-user"></i> Khách hàng</th>
                         <th><i class="fas fa-door-open"></i> Phòng</th>
                         <th><i class="fas fa-tag"></i> Loại phòng</th>
+                        <th><i class="fas fa-money-bill-wave"></i> Đơn giá</th>
                         <th><i class="fas fa-sign-in-alt"></i> Check-in</th>
                         <th><i class="fas fa-sign-out-alt"></i> Check-out</th>
                         <th><i class="fas fa-money-bill"></i> Tiền cọc</th>
@@ -61,9 +78,20 @@
                 <tbody>
                     @foreach (var item in Model)
                     {
-                        <tr>
+                        var isOverdue = ViewBag.OverdueReservations != null && 
+                                       ((HashSet<string>)ViewBag.OverdueReservations).Contains(item.ReservationFormID ?? "");
+                        var rowClass = isOverdue ? "table-danger" : "";
+                        
+                        <tr class="@rowClass">
                             <td>
                                 <strong class="text-primary">#@item.ReservationFormID</strong>
+                                @if (isOverdue)
+                                {
+                                    <br />
+                                    <span class="badge bg-danger mt-1">
+                                        <i class="fas fa-exclamation-triangle"></i> Quá hạn
+                                    </span>
+                                }
                             </td>
                             <td>
                                 <strong>@item.Customer?.FullName</strong>
@@ -74,6 +102,9 @@
                                 </span>
                             </td>
                             <td>@item.Room?.RoomCategory?.RoomCategoryName</td>
+                            <td>
+                                <strong class="text-success">@item.UnitPrice.ToString("N0")đ/@(item.PriceUnit == "HOUR" ? "giờ" : "ngày")</strong>
+                            </td>
                             <td>
                                 <div>
                                     <strong>@item.CheckInDate.ToString("dd/MM/yyyy")</strong>
@@ -101,13 +132,16 @@
                                        class="btn btn-info-modern btn-sm" title="Xem chi tiết">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <form asp-action="Cancel" asp-route-id="@item.ReservationFormID" method="post" class="d-inline" 
-                                          onsubmit="return confirm('Bạn có chắc muốn hủy đặt phòng này?');">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-danger-modern btn-sm" title="Hủy đặt phòng">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
+                                    @if (item.HistoryCheckin == null)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@item.ReservationFormID" method="post" class="d-inline" 
+                                              onsubmit="return confirm('Bạn có chắc muốn xóa phiếu đặt phòng này?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-danger-modern btn-sm" title="Xóa đặt phòng">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </div>
                             </td>
                         </tr>

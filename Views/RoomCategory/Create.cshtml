@@ -1,0 +1,114 @@
+@model HotelManagement.Models.RoomCategory
+
+@{
+    ViewData["Title"] = "Thêm loại phòng mới";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-plus-circle"></i>
+        Thêm loại phòng mới
+    </h1>
+    <p>Tạo loại phòng mới và thiết lập bảng giá</p>
+</div>
+
+<!-- Form Card -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-edit me-2"></i>Thông tin Loại phòng
+    </div>
+    <div class="card-body-modern">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            
+            <div class="row g-3">
+                <!-- Thông tin cơ bản -->
+                <div class="col-12">
+                    <h5 class="border-bottom pb-2">
+                        <i class="fas fa-bed me-2"></i>Thông tin cơ bản
+                    </h5>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="RoomCategoryName" class="form-label required">
+                        <i class="fas fa-tag"></i> Tên loại phòng
+                    </label>
+                    <input asp-for="RoomCategoryName" class="form-control" 
+                           placeholder="VD: Phòng Deluxe, Phòng VIP..." />
+                    <span asp-validation-for="RoomCategoryName" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="NumberOfBed" class="form-label required">
+                        <i class="fas fa-bed"></i> Số giường
+                    </label>
+                    <input asp-for="NumberOfBed" type="number" min="1" max="10" class="form-control" 
+                           placeholder="Số giường trong phòng" />
+                    <span asp-validation-for="NumberOfBed" class="text-danger"></span>
+                </div>
+
+                <!-- Bảng giá -->
+                <div class="col-12 mt-4">
+                    <h5 class="border-bottom pb-2">
+                        <i class="fas fa-money-bill-wave me-2"></i>Bảng giá (VNĐ)
+                    </h5>
+                    <p class="text-muted small">
+                        <i class="fas fa-info-circle"></i> Bạn có thể nhập một hoặc cả hai mức giá. Để trống nếu không cung cấp hình thức thuê đó.
+                    </p>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="priceHour" class="form-label">
+                        <i class="fas fa-clock"></i> Giá theo giờ
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="priceHour" id="priceHour" class="form-control" 
+                               min="0" step="10000" placeholder="VD: 150000" />
+                        <span class="input-group-text">VNĐ/giờ</span>
+                    </div>
+                    <small class="text-muted">Áp dụng cho thuê phòng theo giờ</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="priceDay" class="form-label">
+                        <i class="fas fa-calendar-day"></i> Giá theo ngày
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="priceDay" id="priceDay" class="form-control" 
+                               min="0" step="10000" placeholder="VD: 800000" />
+                        <span class="input-group-text">VNĐ/ngày</span>
+                    </div>
+                    <small class="text-muted">Áp dụng cho thuê phòng theo ngày/đêm</small>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary-modern">
+                    <i class="fas fa-save"></i> Lưu loại phòng
+                </button>
+                <a asp-action="Index" class="btn btn-secondary-modern">
+                    <i class="fas fa-times"></i> Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        // Validation: Ít nhất một trong hai giá phải được nhập
+        $('form').submit(function(e) {
+            const priceHour = parseFloat($('#priceHour').val()) || 0;
+            const priceDay = parseFloat($('#priceDay').val()) || 0;
+            
+            if (priceHour <= 0 && priceDay <= 0) {
+                e.preventDefault();
+                alert('⚠️ Vui lòng nhập ít nhất một mức giá (theo giờ hoặc theo ngày)!');
+                return false;
+            }
+        });
+    </script>
+}

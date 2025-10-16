@@ -1,0 +1,185 @@
+@model IEnumerable<HotelManagement.Models.HotelService>
+
+@{
+    ViewData["Title"] = "Quản lý Dịch vụ Khách sạn";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-concierge-bell"></i>
+                Quản lý Dịch vụ Khách sạn
+            </h1>
+            <p class="mb-0">Quản lý các dịch vụ cung cấp cho khách hàng</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary-modern">
+            <i class="fas fa-plus"></i> Thêm dịch vụ mới
+        </a>
+    </div>
+</div>
+
+<!-- Filter Section -->
+<div class="card-modern fade-in-up mb-3">
+    <div class="card-body-modern">
+        <form method="get" asp-action="Index" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="fas fa-search"></i> Tìm kiếm
+                </label>
+                <input type="text" name="searchString" value="@ViewBag.SearchString" 
+                       class="form-control" placeholder="Tìm theo tên hoặc mô tả...">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="fas fa-filter"></i> Lọc theo danh mục
+                </label>
+                <select name="categoryFilter" class="form-select">
+                    <option value="">-- Tất cả danh mục --</option>
+                    @foreach (var category in ViewBag.ServiceCategories as List<ServiceCategory>)
+                    {
+                        <option value="@category.ServiceCategoryID" 
+                                selected="@(ViewBag.CategoryFilter == category.ServiceCategoryID)">
+                            @category.ServiceCategoryName
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-info-modern flex-fill">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+                <a asp-action="Index" class="btn btn-secondary-modern flex-fill">
+                    <i class="fas fa-redo"></i> Đặt lại
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Services Table -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Dịch vụ
+        <span class="badge-modern badge-info-modern ms-2">
+            <i class="fas fa-hashtag"></i> @Model.Count() dịch vụ
+        </span>
+    </div>
+    <div class="card-body-modern">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div class="stats-icon info mx-auto mb-4">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h4 class="text-muted mb-3">Không tìm thấy dịch vụ</h4>
+                <p class="text-muted">Chưa có dịch vụ nào hoặc không có kết quả phù hợp với bộ lọc</p>
+                <a asp-action="Create" class="btn btn-primary-modern mt-3">
+                    <i class="fas fa-plus"></i> Thêm dịch vụ đầu tiên
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag"></i> Mã DV</th>
+                            <th><i class="fas fa-concierge-bell"></i> Tên dịch vụ</th>
+                            <th><i class="fas fa-tag"></i> Danh mục</th>
+                            <th><i class="fas fa-align-left"></i> Mô tả</th>
+                            <th><i class="fas fa-money-bill"></i> Giá</th>
+                            <th><i class="fas fa-toggle-on"></i> Trạng thái</th>
+                            <th><i class="fas fa-cog"></i> Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td><strong class="text-primary">#@item.HotelServiceId</strong></td>
+                                <td><strong>@item.ServiceName</strong></td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        @item.ServiceCategory?.ServiceCategoryName
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        @if (string.IsNullOrEmpty(item.Description))
+                                        {
+                                            <em>Không có mô tả</em>
+                                        }
+                                        else if (item.Description.Length > 50)
+                                        {
+                                            @item.Description.Substring(0, 50)<text>...</text>
+                                        }
+                                        else
+                                        {
+                                            @item.Description
+                                        }
+                                    </small>
+                                </td>
+                                <td>
+                                    <strong class="text-success">
+                                        @item.ServicePrice.ToString("N0") VNĐ
+                                    </strong>
+                                </td>
+                                <td>
+                                    @if (item.IsActivate == "ACTIVATE")
+                                    {
+                                        <span class="badge-modern badge-success-modern">
+                                            <i class="fas fa-check-circle"></i> Hoạt động
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-modern badge-danger-modern">
+                                            <i class="fas fa-times-circle"></i> Vô hiệu
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="Details" asp-route-id="@item.HotelServiceId" 
+                                           class="btn btn-info-modern btn-sm" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@item.HotelServiceId" 
+                                           class="btn btn-warning-modern btn-sm" title="Chỉnh sửa">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form asp-action="ToggleActivate" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.HotelServiceId" />
+                                            <button type="submit" 
+                                                    class="btn @(item.IsActivate == "ACTIVATE" ? "btn-secondary-modern" : "btn-success-modern") btn-sm"
+                                                    title="@(item.IsActivate == "ACTIVATE" ? "Vô hiệu hóa" : "Kích hoạt")">
+                                                <i class="fas fa-@(item.IsActivate == "ACTIVATE" ? "ban" : "check")"></i>
+                                            </button>
+                                        </form>
+                                        <a asp-action="Delete" asp-route-id="@item.HotelServiceId" 
+                                           class="btn btn-danger-modern btn-sm" title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-submit form khi thay đổi category filter
+        $('select[name="categoryFilter"]').change(function() {
+            $(this).closest('form').submit();
+        });
+    </script>
+}

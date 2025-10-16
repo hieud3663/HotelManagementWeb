@@ -1,0 +1,380 @@
+@{
+    ViewData["Title"] = "Service Status Monitor";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Background Service Monitor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .status-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .status-running {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .status-ready {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .status-pending {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-manual {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .btn-manual:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .log-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-line {
+            margin: 5px 0;
+        }
+
+        .log-success { color: #4ec9b0; }
+        .log-error { color: #f48771; }
+        .log-info { color: #569cd6; }
+        .log-warning { color: #dcdcaa; }
+
+        .room-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .room-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .room-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .countdown {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .countdown.urgent {
+            color: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+
+        @@keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <h1 style="text-align: center; margin-bottom: 30px;">
+            <i class="fas fa-heartbeat"></i> Background Service Monitor
+        </h1>
+
+        <!-- Service Info Card -->
+        <div class="status-card">
+            <div class="status-header">
+                <i class="fas fa-server" style="font-size: 1.5em; color: #667eea;"></i>
+                <h3 style="margin: 0;">Room Status Update Service</h3>
+                <span class="status-badge status-running">
+                    <i class="fas fa-check-circle"></i> RUNNING
+                </span>
+            </div>
+            <p><strong>Chức năng:</strong> Tự động cập nhật phòng sang trạng thái RESERVED khi còn ≤ 5 giờ đến check-in</p>
+            <p><strong>Tần suất:</strong> Mỗi 30 phút</p>
+            <p><strong>Stored Procedure:</strong> <code>sp_UpdateRoomStatusToReserved</code></p>
+            <p><strong>Trạng thái:</strong> Service đang chạy trong background và tự động cập nhật</p>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Total Reservations</div>
+                <div class="stat-number" id="totalCount">-</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-label">Ready to Update</div>
+                <div class="stat-number" id="readyCount">-</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="stat-label">Last Update</div>
+                <div class="stat-number" style="font-size: 1.2em;" id="lastUpdate">-</div>
+            </div>
+        </div>
+
+        <!-- Manual Actions -->
+        <div class="status-card">
+            <div class="status-header">
+                <i class="fas fa-tools" style="font-size: 1.5em; color: #667eea;"></i>
+                <h3 style="margin: 0;">Manual Actions</h3>
+            </div>
+            <button class="btn-manual" onclick="runManualUpdate()">
+                <i class="fas fa-play"></i> Chạy cập nhật ngay
+            </button>
+            <button class="btn-refresh" onclick="loadUpcomingReservations()">
+                <i class="fas fa-sync"></i> Làm mới dữ liệu
+            </button>
+        </div>
+
+        <!-- Upcoming Reservations -->
+        <div class="status-card">
+            <div class="status-header">
+                <i class="fas fa-clock" style="font-size: 1.5em; color: #667eea;"></i>
+                <h3 style="margin: 0;">Upcoming Reservations</h3>
+            </div>
+            <div id="reservationsContainer">
+                <p style="text-align: center; color: #999;">
+                    <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                </p>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="status-card">
+            <div class="status-header">
+                <i class="fas fa-list" style="font-size: 1.5em; color: #667eea;"></i>
+                <h3 style="margin: 0;">Activity Log</h3>
+            </div>
+            <div class="log-box" id="logBox">
+                <div class="log-line log-info">
+                    <i class="fas fa-info-circle"></i> [<span class="log-time"></span>] Trang monitor đã khởi động
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Auto-load data on page load
+        $(document).ready(function() {
+            updateLogTime();
+            loadUpcomingReservations();
+            
+            // Auto-refresh every 2 minutes
+            setInterval(loadUpcomingReservations, 120000);
+        });
+
+        function updateLogTime() {
+            $('.log-time').text(new Date().toLocaleTimeString('vi-VN'));
+        }
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('vi-VN');
+            const icons = {
+                info: '<i class="fas fa-info-circle"></i>',
+                success: '<i class="fas fa-check-circle"></i>',
+                error: '<i class="fas fa-exclamation-circle"></i>',
+                warning: '<i class="fas fa-exclamation-triangle"></i>'
+            };
+            
+            const logHtml = `
+                <div class="log-line log-${type}">
+                    ${icons[type]} [${timestamp}] ${message}
+                </div>
+            `;
+            
+            $('#logBox').prepend(logHtml);
+            
+            // Keep only last 20 logs
+            $('.log-line').slice(20).remove();
+        }
+
+        function loadUpcomingReservations() {
+            addLog('Đang tải danh sách reservations...', 'info');
+            
+            $.ajax({
+                url: '/ServiceStatus/GetUpcomingReservations',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        displayReservations(response.data);
+                        
+                        $('#totalCount').text(response.count);
+                        $('#readyCount').text(response.readyToUpdate);
+                        $('#lastUpdate').text(new Date().toLocaleTimeString('vi-VN'));
+                        
+                        addLog(`✅ Tải thành công ${response.count} reservations (${response.readyToUpdate} sẵn sàng)`, 'success');
+                    } else {
+                        addLog(`❌ Lỗi: ${response.message}`, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    addLog(`❌ Lỗi kết nối: ${error}`, 'error');
+                }
+            });
+        }
+
+        function displayReservations(data) {
+            if (data.length === 0) {
+                $('#reservationsContainer').html(`
+                    <p style="text-align: center; color: #999; padding: 20px;">
+                        <i class="fas fa-inbox"></i> Không có reservation nào đang chờ
+                    </p>
+                `);
+                return;
+            }
+
+            let tableHtml = `
+                <table class="room-table">
+                    <thead>
+                        <tr>
+                            <th>Phòng</th>
+                            <th>Khách hàng</th>
+                            <th>Check-in</th>
+                            <th>Còn lại</th>
+                            <th>Trạng thái phòng</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach(room => {
+                const hours = Math.floor(room.minutesUntilCheckIn / 60);
+                const minutes = room.minutesUntilCheckIn % 60;
+                const isUrgent = room.minutesUntilCheckIn <= 300; // <= 5 hours
+                
+                const countdownClass = isUrgent ? 'countdown urgent' : 'countdown';
+                const statusBadge = room.updateStatus === 'READY' 
+                    ? '<span class="status-badge status-ready">READY</span>'
+                    : '<span class="status-badge status-pending">PENDING</span>';
+
+                tableHtml += `
+                    <tr>
+                        <td><strong>${room.roomID}</strong></td>
+                        <td>${room.customerName}</td>
+                        <td>${new Date(room.checkInDate).toLocaleString('vi-VN')}</td>
+                        <td class="${countdownClass}">${hours}h ${minutes}m</td>
+                        <td>${room.roomStatus}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `
+                    </tbody>
+                </table>
+            `;
+
+            $('#reservationsContainer').html(tableHtml);
+        }
+
+        function runManualUpdate() {
+            addLog('🔄 Đang chạy cập nhật thủ công...', 'info');
+            
+            $.ajax({
+                url: '/ServiceStatus/ManualUpdate',
+                method: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        addLog(response.message + ` (${response.reservedRoomCount} phòng RESERVED)`, 'success');
+                        
+                        // Reload data after 2 seconds
+                        setTimeout(loadUpcomingReservations, 2000);
+                    } else {
+                        addLog(response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    addLog(`❌ Lỗi: ${error}`, 'error');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

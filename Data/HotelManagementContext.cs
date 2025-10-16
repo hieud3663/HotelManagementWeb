@@ -24,6 +24,7 @@ namespace HotelManagement.Data
         public DbSet<RoomChangeHistory> RoomChangeHistories { get; set; }
         public DbSet<RoomUsageService> RoomUsageServices { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<ConfirmationReceipt> ConfirmationReceipts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

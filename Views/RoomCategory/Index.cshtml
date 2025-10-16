@@ -1,0 +1,184 @@
+@model IEnumerable<HotelManagement.Models.RoomCategory>
+
+@{
+    ViewData["Title"] = "Quản lý Loại phòng & Giá";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-bed"></i>
+                Quản lý Loại phòng & Giá
+            </h1>
+            <p class="mb-0">Quản lý các loại phòng và bảng giá theo giờ/ngày</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary-modern">
+            <i class="fas fa-plus"></i> Thêm loại phòng mới
+        </a>
+    </div>
+</div>
+
+<!-- Room Categories Table -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Loại phòng
+        <span class="badge-modern badge-info-modern ms-2">
+            <i class="fas fa-hashtag"></i> @Model.Count() loại
+        </span>
+    </div>
+    <div class="card-body-modern">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <div class="stats-icon info mx-auto mb-4">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h4 class="text-muted mb-3">Chưa có loại phòng nào</h4>
+                <a asp-action="Create" class="btn btn-primary-modern mt-3">
+                    <i class="fas fa-plus"></i> Thêm loại phòng đầu tiên
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag"></i> Mã loại</th>
+                            <th><i class="fas fa-bed"></i> Tên loại phòng</th>
+                            <th><i class="fas fa-user-friends"></i> Số giường</th>
+                            <th><i class="fas fa-clock"></i> Giá theo giờ</th>
+                            <th><i class="fas fa-calendar-day"></i> Giá theo ngày</th>
+                            <th><i class="fas fa-door-open"></i> Số phòng</th>
+                            <th><i class="fas fa-toggle-on"></i> Trạng thái</th>
+                            <th><i class="fas fa-cog"></i> Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var priceHour = item.Pricings?.FirstOrDefault(p => p.PriceUnit == "HOUR");
+                            var priceDay = item.Pricings?.FirstOrDefault(p => p.PriceUnit == "DAY");
+                            var roomCount = item.Rooms?.Count ?? 0;
+
+                            <tr>
+                                <td><strong class="text-primary">#@item.RoomCategoryID</strong></td>
+                                <td><strong>@item.RoomCategoryName</strong></td>
+                                <td>
+                                    <span class="badge-modern badge-info-modern">
+                                        <i class="fas fa-bed"></i> @item.NumberOfBed giường
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (priceHour != null)
+                                    {
+                                        <strong class="text-success">
+                                            @priceHour.Price.ToString("N0") VNĐ/giờ
+                                        </strong>
+                                    }
+                                    else
+                                    {
+                                        <em class="text-muted">Chưa có giá</em>
+                                    }
+                                </td>
+                                <td>
+                                    @if (priceDay != null)
+                                    {
+                                        <strong class="text-success">
+                                            @priceDay.Price.ToString("N0") VNĐ/ngày
+                                        </strong>
+                                    }
+                                    else
+                                    {
+                                        <em class="text-muted">Chưa có giá</em>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-secondary-modern">
+                                        <i class="fas fa-door-open"></i> @roomCount phòng
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (item.IsActivate == "ACTIVATE")
+                                    {
+                                        <span class="badge-modern badge-success-modern">
+                                            <i class="fas fa-check-circle"></i> Hoạt động
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-modern badge-danger-modern">
+                                            <i class="fas fa-times-circle"></i> Vô hiệu
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="Details" asp-route-id="@item.RoomCategoryID" 
+                                           class="btn btn-info-modern btn-sm" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@item.RoomCategoryID" 
+                                           class="btn btn-warning-modern btn-sm" title="Chỉnh sửa">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form asp-action="ToggleActivate" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.RoomCategoryID" />
+                                            <button type="submit" 
+                                                    class="btn @(item.IsActivate == "ACTIVATE" ? "btn-secondary-modern" : "btn-success-modern") btn-sm"
+                                                    title="@(item.IsActivate == "ACTIVATE" ? "Vô hiệu hóa" : "Kích hoạt")">
+                                                <i class="fas fa-@(item.IsActivate == "ACTIVATE" ? "ban" : "check")"></i>
+                                            </button>
+                                        </form>
+                                        <a asp-action="Delete" asp-route-id="@item.RoomCategoryID" 
+                                           class="btn btn-danger-modern btn-sm" title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Pricing Guide -->
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern bg-info text-white">
+                <i class="fas fa-info-circle me-2"></i>Hướng dẫn Bảng giá
+            </div>
+            <div class="card-body-modern">
+                <ul class="mb-0">
+                    <li><strong>Giá theo giờ:</strong> Áp dụng cho thuê phòng ngắn hạn (tính theo giờ)</li>
+                    <li><strong>Giá theo ngày:</strong> Áp dụng cho thuê phòng dài hạn (tính theo ngày/đêm)</li>
+                    <li>Mỗi loại phòng <strong>tối đa 2 mức giá</strong> (1 giờ + 1 ngày)</li>
+                    <li>Có thể để trống nếu không cung cấp hình thức thuê đó</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card-modern fade-in-up">
+            <div class="card-header-modern bg-warning text-dark">
+                <i class="fas fa-exclamation-triangle me-2"></i>Lưu ý
+            </div>
+            <div class="card-body-modern">
+                <ul class="mb-0">
+                    <li>Không thể xóa loại phòng đang có phòng sử dụng</li>
+                    <li>Vô hiệu hóa loại phòng sẽ ẩn khỏi danh sách đặt phòng mới</li>
+                    <li>Thay đổi giá chỉ áp dụng cho đặt phòng mới</li>
+                    <li>Đặt phòng cũ vẫn giữ nguyên giá đã lưu</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

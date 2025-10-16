@@ -20,6 +20,9 @@ namespace HotelManagement.Controllers
                 return RedirectToAction("Login", "Auth");
             }
 
+            // ✅ Background Service đã tự động cập nhật trạng thái phòng mỗi 30 phút
+            // Không cần gọi thủ công nữa
+
             // Thống kê tổng quan
             ViewBag.TotalRooms = await _context.Rooms.CountAsync(r => r.IsActivate == "ACTIVATE");
             ViewBag.AvailableRooms = await _context.Rooms.CountAsync(r => r.RoomStatus == "AVAILABLE" && r.IsActivate == "ACTIVATE");

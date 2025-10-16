@@ -23,11 +23,53 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> Index()
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
-            
+
             var rooms = await _context.Rooms
                 .Include(r => r.RoomCategory)
+                .ThenInclude(rc => rc!.Pricings)
                 .Where(r => r.IsActivate == "ACTIVATE")
                 .ToListAsync();
+
+            // Lấy thông tin khách hàng đang ở phòng
+            var roomsWithCustomer = new List<object>();
+            foreach (var room in rooms)
+            {
+                string? customerName = null;
+
+                // Nếu phòng đang sử dụng, lấy thông tin khách hàng từ HistoryCheckin
+                if (room.RoomStatus == "ON_USE")
+                {
+                    var checkin = await _context.HistoryCheckins
+                        .Include(h => h.ReservationForm)
+                        .ThenInclude(rf => rf!.Customer)
+                        .Where(h => h.ReservationForm!.RoomID == room.RoomID && h.ReservationForm.IsActivate == "ACTIVATE")
+                        .OrderByDescending(h => h.CheckInDate)
+                        .FirstOrDefaultAsync();
+
+                    customerName = checkin?.ReservationForm?.Customer?.FullName;
+                }
+                // Nếu phòng đã đặt, lấy thông tin khách hàng từ ReservationForm
+                else if (room.RoomStatus == "RESERVED")
+                {
+                    var reservation = await _context.ReservationForms
+                        .Include(rf => rf.Customer)
+                        .Where(rf => rf.RoomID == room.RoomID && rf.IsActivate == "ACTIVATE")
+                        .OrderByDescending(rf => rf.ReservationDate)
+                        .FirstOrDefaultAsync();
+
+                    customerName = reservation?.Customer?.FullName;
+                }
+
+                roomsWithCustomer.Add(new
+                {
+                    Room = room,
+                    CustomerName = customerName,
+                    HourPrice = room.RoomCategory?.Pricings?.FirstOrDefault(p => p.PriceUnit == "HOUR")?.Price,
+                    DayPrice = room.RoomCategory?.Pricings?.FirstOrDefault(p => p.PriceUnit == "DAY")?.Price
+                });
+            }
+
+            ViewBag.RoomsWithCustomer = roomsWithCustomer;
             return View(rooms);
         }
 
@@ -48,7 +90,7 @@ namespace HotelManagement.Controllers
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             ViewData["RoomCategoryID"] = new SelectList(
-                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(), 
+                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(),
                 "RoomCategoryID", "RoomCategoryName");
             return View();
         }
@@ -78,7 +120,7 @@ namespace HotelManagement.Controllers
                     prefix = "V";
                 else if (roomCategory.RoomCategoryName.Contains("Thường", StringComparison.OrdinalIgnoreCase))
                     prefix = "T";
-                
+
                 room.RoomID = await _context.GenerateID(prefix, "Room", 4);
                 room.IsActivate = "ACTIVATE";
                 room.DateOfCreation = DateTime.Now;
@@ -90,7 +132,7 @@ namespace HotelManagement.Controllers
                 return RedirectToAction(nameof(Index));
             }
             ViewData["RoomCategoryID"] = new SelectList(
-                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(), 
+                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(),
                 "RoomCategoryID", "RoomCategoryName", room.RoomCategoryID);
             return View(room);
         }
@@ -102,9 +144,9 @@ namespace HotelManagement.Controllers
 
             var room = await _context.Rooms.FindAsync(id);
             if (room == null) return NotFound();
-            
+
             ViewData["RoomCategoryID"] = new SelectList(
-                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(), 
+                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(),
                 "RoomCategoryID", "RoomCategoryName", room.RoomCategoryID);
             return View(room);
         }
@@ -134,7 +176,7 @@ namespace HotelManagement.Controllers
                 return RedirectToAction(nameof(Index));
             }
             ViewData["RoomCategoryID"] = new SelectList(
-                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(), 
+                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(),
                 "RoomCategoryID", "RoomCategoryName", room.RoomCategoryID);
             return View(room);
         }
@@ -177,16 +219,15 @@ namespace HotelManagement.Controllers
 
         // API để lấy phòng trống theo loại phòng và thời gian
         [HttpGet]
-        public async Task<JsonResult> GetAvailableRoomsByCatgory(string categoryId, DateTime checkInDate, DateTime checkOutDate)
+        public async Task<JsonResult> GetAvailableRoomsByCategory(string categoryId, DateTime checkInDate, DateTime checkOutDate)
         {
             var availableRooms = await _context.Rooms
-                .Where(r => r.RoomCategoryID == categoryId && r.RoomStatus == "AVAILABLE" && r.IsActivate == "ACTIVATE")
-                .Where(r => !_context.ReservationForms.Any(rf => 
-                    rf.RoomID == r.RoomID && 
-                    rf.IsActivate == "ACTIVATE" &&
-                    ((rf.CheckInDate <= checkInDate && rf.CheckOutDate > checkInDate) ||
-                     (rf.CheckInDate < checkOutDate && rf.CheckOutDate >= checkOutDate) ||
-                     (rf.CheckInDate >= checkInDate && rf.CheckOutDate <= checkOutDate))))
+                .Where(r => (string.IsNullOrWhiteSpace(categoryId) || r.RoomCategoryID == categoryId) && r.RoomStatus == "AVAILABLE" && r.IsActivate == "ACTIVATE")
+                .Where(r => !_context.ReservationForms.Any(rf =>
+                    rf.RoomID == r.RoomID &&
+                    rf.CheckInDate < checkOutDate &&
+                    rf.CheckOutDate > checkInDate)
+                )
                 .Select(r => new
                 {
                     roomID = r.RoomID
@@ -220,12 +261,12 @@ namespace HotelManagement.Controllers
                 .Include(r => r.RoomCategory)
                 .ThenInclude(rc => rc!.Pricings)
                 .Where(r => r.RoomStatus == "AVAILABLE" && r.IsActivate == "ACTIVATE")
-                .Where(r => !_context.ReservationForms.Any(rf => 
-                    rf.RoomID == r.RoomID && 
+                .Where(r => !_context.ReservationForms.Any(rf =>
+                    rf.RoomID == r.RoomID &&
                     rf.IsActivate == "ACTIVATE" &&
-                    ((rf.CheckInDate <= checkInDate && rf.CheckOutDate > checkInDate) ||
-                     (rf.CheckInDate < checkOutDate && rf.CheckOutDate >= checkOutDate) ||
-                     (rf.CheckInDate >= checkInDate && rf.CheckOutDate <= checkOutDate))))
+                    rf.CheckInDate < checkOutDate &&
+                    rf.CheckOutDate > checkInDate
+                ))
                 .Select(r => new
                 {
                     roomID = r.RoomID,
@@ -238,5 +279,88 @@ namespace HotelManagement.Controllers
 
             return Json(availableRooms);
         }
+
+        // API mới: Lấy tất cả phòng với thông tin reservation sắp đến
+        [HttpGet]
+        public async Task<JsonResult> GetRoomsWithReservations(string? categoryId = null, DateTime checkInDate = default, DateTime checkOutDate = default)
+        {
+            List<object> roomsWithInfo = new();
+
+            if (!string.IsNullOrEmpty(categoryId))
+            {
+                // Lấy phòng AVAILABLE, không bị trùng với khoảng thời gian
+                var availableRooms = await _context.Rooms
+                    .Include(r => r.RoomCategory)
+                    .ThenInclude(rc => rc!.Pricings)
+                    .Where(r => r.RoomCategoryID == categoryId && r.RoomStatus == "AVAILABLE" && r.IsActivate == "ACTIVATE")
+                    .Where(r => !_context.ReservationForms.Any(rf =>
+                        rf.RoomID == r.RoomID &&
+                        rf.IsActivate == "ACTIVATE" &&
+                        rf.CheckInDate < checkOutDate &&
+                        rf.CheckOutDate > checkInDate &&
+                        !_context.HistoryCheckins.Any(hc => hc.ReservationFormID == rf.ReservationFormID)
+                    ))
+                    .ToListAsync();
+
+                foreach (var room in availableRooms)
+                {
+                    roomsWithInfo.Add(new
+                    {
+                        roomID = room.RoomID,
+                        roomStatus = room.RoomStatus,
+                        roomCategoryID = room.RoomCategoryID,
+                        roomCategoryName = room.RoomCategory!.RoomCategoryName,
+                        hourPrice = room.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "HOUR")?.Price,
+                        dayPrice = room.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "DAY")?.Price,
+                        upcomingReservation = new {}
+                    });
+                }
+            }
+            else
+            {
+                // Lấy tất cả phòng, kèm reservation sắp đến (nếu có)
+                var allRooms = await _context.Rooms
+                    .Include(r => r.RoomCategory)
+                    .ThenInclude(rc => rc!.Pricings)
+                    .Where(r => r.IsActivate == "ACTIVATE")
+                    .ToListAsync();
+
+                foreach (var room in allRooms)
+                {
+                    var upcomingReservation = await _context.ReservationForms
+                        .Include(rf => rf.Customer)
+                        .Where(rf => rf.RoomID == room.RoomID && rf.IsActivate == "ACTIVATE")
+                        .Where(rf => !_context.HistoryCheckins.Any(hc => hc.ReservationFormID == rf.ReservationFormID))
+                        .Where(rf => rf.CheckInDate > DateTime.Now)
+                        .OrderBy(rf => rf.CheckInDate)
+                        .FirstOrDefaultAsync();
+
+                    double? hoursUntilCheckIn = upcomingReservation != null
+                        ? (upcomingReservation.CheckInDate - DateTime.Now).TotalHours
+                        : null;
+
+                    roomsWithInfo.Add(new
+                    {
+                        roomID = room.RoomID,
+                        roomStatus = room.RoomStatus,
+                        roomCategoryID = room.RoomCategoryID,
+                        roomCategoryName = room.RoomCategory!.RoomCategoryName,
+                        hourPrice = room.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "HOUR")?.Price,
+                        dayPrice = room.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "DAY")?.Price,
+                        upcomingReservation = upcomingReservation != null ? new
+                        {
+                            reservationFormID = upcomingReservation.ReservationFormID,
+                            checkInDate = upcomingReservation.CheckInDate,
+                            customerName = upcomingReservation.Customer?.FullName,
+                            hoursUntilCheckIn = hoursUntilCheckIn,
+                            isNearCheckIn = hoursUntilCheckIn <= 5 // Còn <= 5 giờ
+                        } : null
+                    });
+                }
+            }
+
+            return Json(roomsWithInfo);
+        }
     }
+    
 }

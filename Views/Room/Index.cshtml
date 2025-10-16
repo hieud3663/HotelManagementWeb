@@ -2,7 +2,133 @@
 
 @{
     ViewData["Title"] = "Quản lý Phòng";
+    var roomsWithCustomer = ViewBag.RoomsWithCustomer as List<dynamic>;
 }
+
+<style>
+    .view-toggle {
+        display: inline-flex;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #e0e0e0;
+    }
+
+    .view-toggle-btn {
+        padding: 8px 20px;
+        border: none;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .view-toggle-btn:hover {
+        background: #f0f0f0;
+    }
+
+    .view-toggle-btn.active {
+        background: #3498db;
+        color: white;
+    }
+
+    /* Grid View Styles */
+    .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .room-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        min-height: 250px;
+    }
+
+    .room-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .room-card.available {
+        background: linear-gradient(135deg, #52c234 0%, #61d345 100%);
+    }
+
+    .room-card.on_use {
+        background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+    }
+
+    .room-card.reserved {
+        background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    }
+
+    .room-card-body {
+        padding: 20px;
+        text-align: center;
+        color: white;
+    }
+
+    .room-number {
+        font-size: 48px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .room-status {
+        font-size: 24px;
+        font-weight: 300;
+        margin: 10px 0;
+    }
+
+    .room-category {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-top: 10px;
+    }
+
+    .room-customer {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 10px;
+        margin-top: 12px;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .room-pricing {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 8px;
+        margin-top: 10px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+
+    .room-pricing .price-item {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+    }
+
+    .room-actions {
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+        margin-top: 15px;
+    }
+
+    .room-actions .btn {
+        flex: 1;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .room-icon {
+        font-size: 40px;
+        opacity: 0.9;
+    }
+</style>
 
 <!-- Page Header -->
 <div class="page-header fade-in-up">
@@ -14,9 +140,19 @@
             </h1>
             <p class="mb-0">Quản lý thông tin các phòng trong khách sạn</p>
         </div>
-        <a asp-action="Create" class="btn btn-primary-modern">
-            <i class="fas fa-plus"></i> Thêm phòng mới
-        </a>
+        <div class="d-flex gap-3 align-items-center">
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" onclick="switchView('table')">
+                    <i class="fas fa-table"></i> Bảng
+                </button>
+                <button class="view-toggle-btn" onclick="switchView('grid')">
+                    <i class="fas fa-th"></i> Lưới
+                </button>
+            </div>
+            <a asp-action="Create" class="btn btn-primary-modern">
+                <i class="fas fa-plus"></i> Thêm phòng mới
+            </a>
+        </div>
     </div>
 </div>
 
@@ -67,52 +203,69 @@
 </div>
 
 <!-- Room Table -->
-<div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+<div id="tableView" class="card-modern fade-in-up" style="animation-delay: 0.5s">
     <div class="card-header-modern">
         <i class="fas fa-list me-2"></i>Danh sách Phòng
     </div>
     <div class="card-body-modern">
         <div class="table-responsive">
-            <table class="table-modern mb-0">
+            <table class="table-modern mb-0 w-100">
                 <thead>
                     <tr>
                         <th><i class="fas fa-hashtag"></i> Mã phòng</th>
                         <th><i class="fas fa-tag"></i> Loại phòng</th>
                         <th><i class="fas fa-bed"></i> Số giường</th>
+                        <th><i class="fas fa-user"></i> Khách hàng</th>
                         <th><i class="fas fa-info-circle"></i> Trạng thái</th>
                         <th><i class="fas fa-calendar"></i> Ngày tạo</th>
                         <th><i class="fas fa-cog"></i> Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model)
+                    @foreach (var roomData in roomsWithCustomer ?? new List<dynamic>())
                     {
+                        var item = roomData.Room as HotelManagement.Models.Room;
+                        var customerName = roomData.CustomerName as string;
+                        var canModify = item?.RoomStatus == "AVAILABLE";
+                        
                         <tr>
                             <td>
-                                <strong class="text-primary">@item.RoomID</strong>
+                                <strong class="text-primary">@item?.RoomID</strong>
                             </td>
                             <td>
-                                <strong>@item.RoomCategory?.RoomCategoryName</strong>
+                                <strong>@item?.RoomCategory?.RoomCategoryName</strong>
                             </td>
                             <td>
                                 <span class="badge-modern badge-info-modern">
-                                    <i class="fas fa-bed"></i> @item.RoomCategory?.NumberOfBed giường
+                                    <i class="fas fa-bed"></i> @item?.RoomCategory?.NumberOfBed giường
                                 </span>
                             </td>
                             <td>
-                                @if (item.RoomStatus == "AVAILABLE")
+                                @if (!string.IsNullOrEmpty(customerName))
+                                {
+                                    <span class="badge-modern badge-warning-modern">
+                                        <i class="fas fa-user"></i> @customerName
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">---</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item?.RoomStatus == "AVAILABLE")
                                 {
                                     <span class="badge-modern badge-success-modern">
                                         <i class="fas fa-check-circle"></i> Trống
                                     </span>
                                 }
-                                else if (item.RoomStatus == "ON_USE")
+                                else if (item?.RoomStatus == "ON_USE")
                                 {
                                     <span class="badge-modern badge-warning-modern">
                                         <i class="fas fa-user-check"></i> Đang sử dụng
                                     </span>
                                 }
-                                else if (item.RoomStatus == "RESERVED")
+                                else if (item?.RoomStatus == "RESERVED")
                                 {
                                     <span class="badge-modern badge-info-modern">
                                         <i class="fas fa-bookmark"></i> Đã đặt
@@ -121,25 +274,34 @@
                                 else
                                 {
                                     <span class="badge-modern badge-danger-modern">
-                                        <i class="fas fa-exclamation-circle"></i> @item.RoomStatus
+                                        <i class="fas fa-exclamation-circle"></i> @item?.RoomStatus
                                     </span>
                                 }
                             </td>
-                            <td>@item.DateOfCreation.ToString("dd/MM/yyyy")</td>
+                            <td>@item?.DateOfCreation.ToString("dd/MM/yyyy")</td>
                             <td>
                                 <div class="d-flex gap-2">
-                                    <a asp-action="Details" asp-route-id="@item.RoomID" class="btn btn-info-modern btn-sm" title="Xem chi tiết">
+                                    <a asp-action="Details" asp-route-id="@item?.RoomID" class="btn btn-info-modern btn-sm" title="Xem chi tiết">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a asp-action="Edit" asp-route-id="@item.RoomID" class="btn btn-warning-modern btn-sm" title="Chỉnh sửa">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a asp-action="Delete" asp-route-id="@item.RoomID" 
-                                       class="btn btn-danger-modern btn-sm" 
-                                       onclick="return confirm('Bạn có chắc muốn xóa phòng @item.RoomID?');"
-                                       title="Xóa">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    @if (canModify)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@item?.RoomID" class="btn btn-warning-modern btn-sm" title="Chỉnh sửa">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a asp-action="Delete" asp-route-id="@item?.RoomID" 
+                                           class="btn btn-danger-modern btn-sm" 
+                                           onclick="return confirm('Bạn có chắc muốn xóa phòng @item?.RoomID?');"
+                                           title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-secondary btn-sm" disabled title="Không thể sửa/xóa phòng đang sử dụng">
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -149,3 +311,127 @@
         </div>
     </div>
 </div>
+
+<!-- Grid View -->
+<div id="tableView" class="card-modern fade-in-up" style="animation-delay: 0.5s">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách Phòng
+    </div>
+    <div id="gridView" class="room-grid p-3" style="display: none;">
+        @foreach (var roomData in roomsWithCustomer ?? new List<dynamic>())
+        {
+            var item = roomData.Room as HotelManagement.Models.Room;
+            var customerName = roomData.CustomerName as string;
+            var hourPrice = roomData.HourPrice as double?;
+            var dayPrice = roomData.DayPrice as double?;
+            var canModify = item?.RoomStatus == "AVAILABLE";
+            
+            var statusClass = item?.RoomStatus?.ToLower() ?? "available";
+            var statusText = item?.RoomStatus switch
+            {
+                "AVAILABLE" => "Trống",
+                "ON_USE" => "Đang sử dụng",
+                "RESERVED" => "Đã đặt",
+                _ => item?.RoomStatus ?? "N/A"
+            };
+            var statusIcon = item?.RoomStatus switch
+            {
+                "AVAILABLE" => "<i class='fas fa-check-circle room-icon'></i>",
+                "ON_USE" => "<i class='fas fa-user-check room-icon'></i>",
+                "RESERVED" => "<i class='fas fa-bookmark room-icon'></i>",
+                _ => "<i class='fas fa-question-circle room-icon'></i>"
+            };
+            
+            <div class="room-card @statusClass fade-in-up">
+                <div class="room-card-body">
+                    @Html.Raw(statusIcon)
+                    <div class="room-number">@item?.RoomID</div>
+                    <div class="room-status">@statusText</div>
+                    <div class="room-category">@item?.RoomCategory?.RoomCategoryName</div>
+                    
+                    @if (!string.IsNullOrEmpty(customerName))
+                    {
+                        <div class="room-customer">
+                            <i class="fas fa-user"></i> <strong>@customerName</strong>
+                        </div>
+                    }
+                    
+                    @if (hourPrice.HasValue || dayPrice.HasValue)
+                    {
+                        <div class="room-pricing">
+                            @if (hourPrice.HasValue)
+                            {
+                                <div class="price-item">
+                                    <span><i class="fas fa-clock"></i> Giờ:</span>
+                                    <span><strong>@hourPrice.Value.ToString("N0") đ</strong></span>
+                                </div>
+                            }
+                            @if (dayPrice.HasValue)
+                            {
+                                <div class="price-item">
+                                    <span><i class="fas fa-calendar-day"></i> Ngày:</span>
+                                    <span><strong>@dayPrice.Value.ToString("N0") đ</strong></span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    
+                    <div class="room-actions">
+                        <a asp-action="Details" asp-route-id="@item?.RoomID" class="btn btn-info-modern btn-sm" title="Xem">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        @if (canModify)
+                        {
+                            <a asp-action="Edit" asp-route-id="@item?.RoomID" class="btn btn-warning-modern btn-sm" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@item?.RoomID" 
+                            class="btn btn-danger-modern btn-sm" 
+                            onclick="return confirm('Bạn có chắc muốn xóa phòng @item?.RoomID?');"
+                            title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary btn-sm" disabled title="Đang sử dụng">
+                                <i class="fas fa-lock"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+@section Scripts {
+    <script>
+        function switchView(viewType) {
+            const tableView = document.getElementById('tableView');
+            const gridView = document.getElementById('gridView');
+            const buttons = document.querySelectorAll('.view-toggle-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (viewType === 'table') {
+                tableView.style.display = 'block';
+                gridView.style.display = 'none';
+                buttons[0].classList.add('active');
+                localStorage.setItem('roomViewType', 'table');
+            } else {
+                tableView.style.display = 'none';
+                gridView.style.display = 'grid';
+                buttons[1].classList.add('active');
+                localStorage.setItem('roomViewType', 'grid');
+            }
+        }
+        
+        // Khôi phục view type từ localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedViewType = localStorage.getItem('roomViewType');
+            if (savedViewType === 'grid') {
+                switchView('grid');
+            }
+        });
+    </script>
+}

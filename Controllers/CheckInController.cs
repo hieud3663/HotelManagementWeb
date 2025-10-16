@@ -33,6 +33,12 @@ namespace HotelManagement.Controllers
                 .OrderBy(r => r.CheckInDate)
                 .ToListAsync();
 
+            // Đánh dấu phiếu đặt phòng quá hạn
+            ViewBag.OverdueReservations = pendingReservations
+                .Where(r => r.CheckOutDate < DateTime.Now)
+                .Select(r => r.ReservationFormID)
+                .ToHashSet();
+
             return View(pendingReservations);
         }
 
@@ -63,7 +69,29 @@ namespace HotelManagement.Controllers
 
                 if (result != null)
                 {
-                    TempData["Success"] = $"Check-in thành công! Mã check-in: {result.HistoryCheckInID}. {result.CheckinStatus}";
+                    // Tạo phiếu xác nhận nhận phòng tự động
+                    try
+                    {
+                        var receipt = await _context.CreateConfirmationReceiptSP(
+                            "CHECKIN",
+                            reservationFormID,
+                            null, // Chưa có invoice khi check-in
+                            employeeID!
+                        );
+                        
+                        if (receipt != null)
+                        {
+                            TempData["Success"] = $"Check-in thành công! Mã check-in: {result.HistoryCheckInID}<br/>Phiếu xác nhận: {receipt.ReceiptID}";
+                            TempData["ReceiptID"] = receipt.ReceiptID;
+                        }
+                    }
+                    catch (Exception exReceipt)
+                    {
+                        // Nếu tạo phiếu lỗi thì vẫn báo check-in thành công
+                        TempData["Success"] = $"Check-in thành công! Mã check-in: {result.HistoryCheckInID}. {result.CheckinStatus}";
+                        TempData["Warning"] = $"Không thể tạo phiếu xác nhận: {exReceipt.Message}";
+                    }
+                    
                     return RedirectToAction(nameof(Index));
                 }
                 else
@@ -78,6 +106,49 @@ namespace HotelManagement.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // Xóa phiếu đặt phòng trong danh sách chờ check-in (soft delete)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            if (!CheckAuth()) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var reservation = await _context.ReservationForms
+                    .FirstOrDefaultAsync(r => r.ReservationFormID == id);
+
+                if (reservation == null)
+                {
+                    TempData["Error"] = "Không tìm thấy phiếu đặt phòng!";
+                    return RedirectToAction("Index");
+                }
+
+                // Kiểm tra xem đã check-in chưa
+                var hasCheckedIn = await _context.HistoryCheckins
+                    .AnyAsync(h => h.ReservationFormID == id);
+
+                if (hasCheckedIn)
+                {
+                    TempData["Error"] = "Không thể xóa phiếu đặt phòng đã check-in!";
+                    return RedirectToAction("Index");
+                }
+
+                // Soft delete
+                reservation.IsActivate = "DEACTIVATE";
+                _context.Update(reservation);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Đã xóa phiếu đặt phòng {id} thành công!";
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Lỗi khi xóa phiếu đặt phòng: {ex.Message}";
+                return RedirectToAction("Index");
+            }
         }
 
         public async Task<IActionResult> CheckedInList()

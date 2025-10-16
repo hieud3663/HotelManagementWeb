@@ -84,8 +84,47 @@
     </div>
 </div>
 
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <!-- Employee Performance Bar Chart -->
+    <div class="col-lg-12">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-bar me-2"></i>Biểu đồ Top 10 Nhân viên (Số đặt phòng)
+            </div>
+            <div class="card-body-modern">
+                <canvas id="employeePerformanceChart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Employee Deposit Pie Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
+            <div class="card-header-modern">
+                <i class="fas fa-chart-pie me-2"></i>Phân bố Tiền cọc theo Nhân viên
+            </div>
+            <div class="card-body-modern">
+                <canvas id="employeeDepositChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Performance Rating Chart -->
+    <div class="col-lg-6">
+        <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+            <div class="card-header-modern">
+                <i class="fas fa-star me-2"></i>Phân loại Hiệu suất Nhân viên
+            </div>
+            <div class="card-body-modern">
+                <canvas id="performanceRatingChart" style="max-height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Employee Performance Table -->
-<div class="card-modern fade-in-up" style="animation-delay: 0.4s">
+<div class="card-modern fade-in-up" style="animation-delay: 0.8s">
     <div class="card-header-modern">
         <i class="fas fa-chart-bar me-2"></i>Bảng xếp hạng Nhân viên
     </div>
@@ -93,7 +132,7 @@
         @if (ViewBag.EmployeeStats != null && ViewBag.EmployeeStats.Count > 0)
         {
             <div class="table-responsive">
-                <table class="table-modern mb-0">
+                <table class="table-modern mb-0 w-100">
                     <thead>
                         <tr>
                             <th><i class="fas fa-medal"></i> Hạng</th>
@@ -185,3 +224,141 @@
         <i class="fas fa-print"></i> In báo cáo
     </button>
 </div>
+
+@section Scripts {
+<script>
+    const employeeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.EmployeeStats ?? new List<object>()));
+    
+    if (employeeData && employeeData.length > 0) {
+        // 1. Top 10 Employee Performance Bar Chart (Horizontal)
+        const top10 = employeeData.slice(0, 10);
+        const ctxPerformance = document.getElementById('employeePerformanceChart').getContext('2d');
+        new Chart(ctxPerformance, {
+            type: 'bar',
+            data: {
+                labels: top10.map(e => e.EmployeeName),
+                datasets: [{
+                    label: 'Số đặt phòng',
+                    data: top10.map(e => e.TotalReservations),
+                    backgroundColor: '#4e73df',
+                    borderColor: '#2e59d9',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Số đặt phòng: ' + context.parsed.x;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 2. Employee Deposit Pie Chart (Top 5)
+        const top5 = employeeData.slice(0, 5);
+        const ctxDeposit = document.getElementById('employeeDepositChart').getContext('2d');
+        new Chart(ctxDeposit, {
+            type: 'doughnut',
+            data: {
+                labels: top5.map(e => e.EmployeeName),
+                datasets: [{
+                    label: 'Tiền cọc',
+                    data: top5.map(e => e.TotalDeposit),
+                    backgroundColor: [
+                        '#4e73df',
+                        '#1cc88a',
+                        '#36b9cc',
+                        '#f6c23e',
+                        '#e74a3b'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value.toLocaleString('vi-VN') + ' đ (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 3. Performance Rating Distribution Chart
+        const excellent = employeeData.filter(e => e.TotalReservations >= 20).length;
+        const good = employeeData.filter(e => e.TotalReservations >= 10 && e.TotalReservations < 20).length;
+        const average = employeeData.filter(e => e.TotalReservations >= 5 && e.TotalReservations < 10).length;
+        const low = employeeData.filter(e => e.TotalReservations < 5).length;
+        
+        const ctxRating = document.getElementById('performanceRatingChart').getContext('2d');
+        new Chart(ctxRating, {
+            type: 'pie',
+            data: {
+                labels: ['Xuất sắc (>=20)', 'Tốt (10-19)', 'Khá (5-9)', 'Trung bình (<5)'],
+                datasets: [{
+                    data: [excellent, good, average, low],
+                    backgroundColor: [
+                        '#1cc88a',
+                        '#36b9cc',
+                        '#f6c23e',
+                        '#e74a3b'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' NV (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+}

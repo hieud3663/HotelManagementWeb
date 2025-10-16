@@ -29,9 +29,17 @@ namespace HotelManagement.Controllers
                 .Include(r => r.Room)
                 .ThenInclude(ro => ro!.RoomCategory)
                 .Include(r => r.Employee)
+                .Include(r => r.HistoryCheckin)
                 .Where(r => r.IsActivate == "ACTIVATE")
                 .OrderByDescending(r => r.ReservationDate)
                 .ToListAsync();
+            
+            // Đánh dấu phiếu đặt phòng quá hạn
+            ViewBag.OverdueReservations = reservations
+                .Where(r => r.CheckOutDate < DateTime.Now && r.HistoryCheckin == null)
+                .Select(r => r.ReservationFormID)
+                .ToHashSet();
+            
             return View(reservations);
         }
 
@@ -76,13 +84,30 @@ namespace HotelManagement.Controllers
                     .Where(r => r.RoomStatus == "AVAILABLE" && r.IsActivate == "ACTIVATE").ToListAsync(), 
                 "RoomID", "RoomID");
             
+            // Load all rooms with category info and pricing for grid display
+            ViewBag.AllRooms = await _context.Rooms
+                .Include(r => r.RoomCategory)
+                .ThenInclude(rc => rc!.Pricings)
+                .Where(r => r.IsActivate == "ACTIVATE")
+                .Select(r => new
+                {
+                    roomID = r.RoomID,
+                    roomStatus = r.RoomStatus,
+                    roomCategoryID = r.RoomCategoryID,
+                    roomCategoryName = r.RoomCategory!.RoomCategoryName,
+                    hourPrice = r.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "HOUR")!.Price,
+                    dayPrice = r.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "DAY")!.Price
+                })
+                .ToListAsync();
+            
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("CheckInDate,CheckOutDate,RoomID,CustomerID,RoomBookingDeposit")] ReservationForm reservation)
+        public async Task<IActionResult> Create([Bind("CheckInDate,CheckOutDate,RoomID,CustomerID,RoomBookingDeposit,PriceUnit,UnitPrice")] ReservationForm reservation)
         {
+
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
             reservation.EmployeeID = HttpContext.Session.GetString("EmployeeID")!;
@@ -109,12 +134,36 @@ namespace HotelManagement.Controllers
                         reservation.RoomID,
                         reservation.CustomerID,
                         reservation.EmployeeID,
-                        reservation.RoomBookingDeposit
+                        reservation.RoomBookingDeposit,
+                        reservation.PriceUnit,
+                        reservation.UnitPrice
                     );
 
                     if (result != null)
                     {
-                        TempData["Success"] = $"Đặt phòng thành công! Mã đặt phòng: {result.ReservationFormID}";
+                        // Tạo phiếu xác nhận đặt phòng tự động
+                        try
+                        {
+                            var receipt = await _context.CreateConfirmationReceiptSP(
+                                "RESERVATION",
+                                result.ReservationFormID,
+                                null,
+                                reservation.EmployeeID
+                            );
+                            
+                            if (receipt != null)
+                            {
+                                TempData["Success"] = $"Đặt phòng thành công! Mã đặt phòng: {result.ReservationFormID}<br/>Phiếu xác nhận: {receipt.ReceiptID}";
+                                TempData["ReceiptID"] = receipt.ReceiptID; // Để redirect sang view phiếu
+                            }
+                        }
+                        catch (Exception exReceipt)
+                        {
+                            // Nếu tạo phiếu lỗi thì vẫn báo đặt phòng thành công
+                            TempData["Success"] = $"Đặt phòng thành công! Mã đặt phòng: {result.ReservationFormID}";
+                            TempData["Warning"] = $"Không thể tạo phiếu xác nhận: {exReceipt.Message}";
+                        }
+                        
                         return RedirectToAction(nameof(Index));
                     }
                     else
@@ -128,13 +177,31 @@ namespace HotelManagement.Controllers
                 }
             }
 
-            // Nếu có lỗi, load lại dữ liệu cho dropdown
             ViewData["CustomerID"] = new SelectList(
-                await _context.Customers.Where(c => c.IsActivate == "ACTIVATE").ToListAsync(),
-                "CustomerID", "FullName", reservation.CustomerID);
+                await _context.Customers.Where(c => c.IsActivate == "ACTIVATE").ToListAsync(), 
+                "CustomerID", "FullName");
+            
             ViewData["RoomCategories"] = new SelectList(
-                await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(),
+                await _context.RoomCategories
+                    .Where(rc => rc.IsActivate == "ACTIVATE")
+                    .ToListAsync(), 
                 "RoomCategoryID", "RoomCategoryName");
+            
+            // Load all rooms with category info and pricing for grid display
+            ViewBag.AllRooms = await _context.Rooms
+                .Include(r => r.RoomCategory)
+                .ThenInclude(rc => rc!.Pricings)
+                .Where(r => r.IsActivate == "ACTIVATE")
+                .Select(r => new
+                {
+                    roomID = r.RoomID,
+                    roomStatus = r.RoomStatus,
+                    roomCategoryID = r.RoomCategoryID,
+                    roomCategoryName = r.RoomCategory!.RoomCategoryName,
+                    hourPrice = r.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "HOUR")!.Price,
+                    dayPrice = r.RoomCategory.Pricings!.FirstOrDefault(p => p.PriceUnit == "DAY")!.Price
+                })
+                .ToListAsync();
 
             return View(reservation);
         }
@@ -161,17 +228,19 @@ namespace HotelManagement.Controllers
                     return RedirectToAction(nameof(Details), new { id });
                 }
 
-                reservation.IsActivate = "DEACTIVATE";
-                _context.Update(reservation);
+                // Sử dụng ExecuteSqlRaw để tránh conflict với trigger
+                await _context.Database.ExecuteSqlRawAsync(
+                    "UPDATE ReservationForm SET IsActivate = 'DEACTIVATE' WHERE ReservationFormID = {0}", 
+                    id);
 
                 // Cập nhật trạng thái phòng về AVAILABLE
                 if (reservation.Room != null)
                 {
-                    reservation.Room.RoomStatus = "AVAILABLE";
-                    _context.Update(reservation.Room);
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "UPDATE Room SET RoomStatus = 'AVAILABLE' WHERE RoomID = {0}", 
+                        reservation.Room.RoomID);
                 }
 
-                await _context.SaveChangesAsync();
                 TempData["Success"] = "Hủy đặt phòng thành công!";
             }
 
@@ -194,6 +263,46 @@ namespace HotelManagement.Controllers
             var deposit = dayPrice * daysDiff * 0.3m; // 30% tiền phòng
 
             return Json(new { success = true, deposit = deposit, totalDays = daysDiff, dayPrice = dayPrice });
+        }
+
+        // Xóa phiếu đặt phòng (soft delete)
+        [HttpPost]
+        public async Task<IActionResult> Delete(string id)
+        {
+            if (!CheckAuth()) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var reservation = await _context.ReservationForms
+                    .Include(r => r.HistoryCheckin)
+                    .FirstOrDefaultAsync(r => r.ReservationFormID == id);
+
+                if (reservation == null)
+                {
+                    TempData["ErrorMessage"] = "Không tìm thấy phiếu đặt phòng!";
+                    return RedirectToAction("Index");
+                }
+
+                // Kiểm tra xem đã check-in chưa
+                if (reservation.HistoryCheckin != null)
+                {
+                    TempData["ErrorMessage"] = "Không thể xóa phiếu đặt phòng đã check-in!";
+                    return RedirectToAction("Index");
+                }
+
+                // Soft delete
+                reservation.IsActivate = "DEACTIVATE";
+                _context.Update(reservation);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Đã xóa phiếu đặt phòng {id} thành công!";
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Lỗi khi xóa phiếu đặt phòng: {ex.Message}";
+                return RedirectToAction("Index");
+            }
         }
     }
 }

@@ -1,11 +1,24 @@
 /* _content/HotelManagement/Views/Shared/_Layout.cshtml.rz.scp.css */
-/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
 
 a.navbar-brand[b-iusgz2j4rn] {
   white-space: normal;
   text-align: center;
   word-break: break-all;
+}
+
+header[b-iusgz2j4rn] {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1030; 
+    background-color: #fff; 
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+}
+
+body[b-iusgz2j4rn] {
+  margin: 0;
+  padding-top: 70px;
 }
 
 a[b-iusgz2j4rn] {

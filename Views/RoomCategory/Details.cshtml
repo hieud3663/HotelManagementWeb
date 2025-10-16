@@ -1,0 +1,164 @@
+@model HotelManagement.Models.RoomCategory
+
+@{
+    ViewData["Title"] = "Chi tiết loại phòng";
+    var priceHour = Model.Pricings?.FirstOrDefault(p => p.PriceUnit == "HOUR");
+    var priceDay = Model.Pricings?.FirstOrDefault(p => p.PriceUnit == "DAY");
+    var roomCount = Model.Rooms?.Count ?? 0;
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-eye"></i>
+        Chi tiết: @Model.RoomCategoryName
+    </h1>
+    <p>Thông tin chi tiết về loại phòng #@Model.RoomCategoryID</p>
+</div>
+
+<!-- Details Card -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-info-circle me-2"></i>Thông tin Loại phòng
+    </div>
+    <div class="card-body-modern">
+        <dl class="row">
+            <dt class="col-sm-3"><i class="fas fa-hashtag"></i> Mã loại:</dt>
+            <dd class="col-sm-9"><strong class="text-primary">@Model.RoomCategoryID</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-tag"></i> Tên loại phòng:</dt>
+            <dd class="col-sm-9"><h5 class="mb-0">@Model.RoomCategoryName</h5></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-bed"></i> Số giường:</dt>
+            <dd class="col-sm-9">
+                <span class="badge-modern badge-info-modern">
+                    <i class="fas fa-bed"></i> @Model.NumberOfBed giường
+                </span>
+            </dd>
+
+            <dt class="col-sm-3"><i class="fas fa-toggle-on"></i> Trạng thái:</dt>
+            <dd class="col-sm-9">
+                @if (Model.IsActivate == "ACTIVATE")
+                {
+                    <span class="badge-modern badge-success-modern">
+                        <i class="fas fa-check-circle"></i> Đang hoạt động
+                    </span>
+                }
+                else
+                {
+                    <span class="badge-modern badge-danger-modern">
+                        <i class="fas fa-times-circle"></i> Đã vô hiệu hóa
+                    </span>
+                }
+            </dd>
+        </dl>
+
+        <hr />
+
+        <h5 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>Bảng giá</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-3x text-success mb-3"></i>
+                        <h6>Giá theo giờ</h6>
+                        @if (priceHour != null)
+                        {
+                            <h3 class="text-success mb-0">@priceHour.Price.ToString("N0") VNĐ</h3>
+                            <small class="text-muted">/ giờ</small>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">Chưa có giá</p>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-primary">
+                    <div class="card-body text-center">
+                        <i class="fas fa-calendar-day fa-3x text-primary mb-3"></i>
+                        <h6>Giá theo ngày</h6>
+                        @if (priceDay != null)
+                        {
+                            <h3 class="text-primary mb-0">@priceDay.Price.ToString("N0") VNĐ</h3>
+                            <small class="text-muted">/ ngày</small>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">Chưa có giá</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr />
+
+        <h5 class="mb-3"><i class="fas fa-door-open me-2"></i>Danh sách Phòng (@roomCount phòng)</h5>
+        @if (roomCount > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã phòng</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày tạo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var room in Model.Rooms!.OrderBy(r => r.RoomID))
+                        {
+                            <tr>
+                                <td><strong>@room.RoomID</strong></td>
+                                <td>
+                                    @switch (room.RoomStatus)
+                                    {
+                                        case "AVAILABLE":
+                                            <span class="badge bg-success">Trống</span>
+                                            break;
+                                        case "ON_USE":
+                                            <span class="badge bg-info">Đang dùng</span>
+                                            break;
+                                        case "RESERVED":
+                                            <span class="badge bg-warning">Đã đặt</span>
+                                            break;
+                                        case "UNAVAILABLE":
+                                            <span class="badge bg-secondary">Không khả dụng</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-dark">@room.RoomStatus</span>
+                                            break;
+                                    }
+                                </td>
+                                <td>@room.DateOfCreation.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted text-center py-3">
+                <i class="fas fa-inbox"></i> Chưa có phòng nào thuộc loại này
+            </p>
+        }
+
+        <div class="d-flex gap-2 mt-4">
+            <a asp-action="Edit" asp-route-id="@Model.RoomCategoryID" class="btn btn-warning-modern">
+                <i class="fas fa-edit"></i> Chỉnh sửa
+            </a>
+            <a asp-action="Delete" asp-route-id="@Model.RoomCategoryID" class="btn btn-danger-modern">
+                <i class="fas fa-trash"></i> Xóa
+            </a>
+            <a asp-action="Index" class="btn btn-secondary-modern">
+                <i class="fas fa-list"></i> Quay lại danh sách
+            </a>
+            <a asp-controller="Room" asp-action="Index" class="btn btn-info-modern">
+                <i class="fas fa-door-open"></i> Quản lý phòng
+            </a>
+        </div>
+    </div>
+</div>

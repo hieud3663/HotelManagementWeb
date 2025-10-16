@@ -144,8 +144,6 @@ D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\rjsmcshtml.dswa.cache.js
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\scopedcss\Views\Shared\_Layout.cshtml.rz.scp.css
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\scopedcss\bundle\HotelManagement.styles.css
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\scopedcss\projectbundle\HotelManagement.bundle.scp.css
-D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6i5reqxq7z-l6k5y7efi6.gz
-D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\eb0l1zg7ka-b9sayid5wm.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\9z7c61vzzw-61n19gt1b8.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\ci80as3wgm-bqjiyaj88i.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\e2ihkoocdg-c2jlpeoesf.gz
@@ -206,8 +204,6 @@ D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\k7em6h89ou-2z
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\95spdyhyny-muycvpuwrr.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\t7tof9k5a7-87fc7y1x7t.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\4ajtz6h3qi-mlv21k5csn.gz
-D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\9vwf4ggh1t-6kzztpxxol.gz
-D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\jwqgy7x983-6kzztpxxol.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\staticwebassets.build.json
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\staticwebassets.build.json.cache
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\staticwebassets.development.json
@@ -220,3 +216,8 @@ D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\HotelManagement.genrunti
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\ref\HotelManagement.dll
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\gwnyns4wsv-rsshgcx4zt.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6es52sxz1y-6714a9yhx7.gz
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\HotelManagement.sourcelink.json
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6i5reqxq7z-qb4sy67sr4.gz
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\eb0l1zg7ka-7o5q5u3cn2.gz
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\9vwf4ggh1t-e5z641soc9.gz
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\jwqgy7x983-e5z641soc9.gz

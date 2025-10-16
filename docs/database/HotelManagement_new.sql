@@ -158,6 +158,11 @@ CREATE TABLE ReservationForm (
 );
 GO
 
+ALTER TABLE ReservationForm
+ADD priceUnit NVARCHAR(15) NOT NULL DEFAULT 'DAY' CHECK (priceUnit IN ('DAY', 'HOUR')),
+    unitPrice MONEY NOT NULL DEFAULT 0;
+
+GO
 -- Tạo bảng RoomChangeHistory
 CREATE TABLE RoomChangeHistory (
     roomChangeHistoryID NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -236,6 +241,71 @@ CREATE TABLE Invoice (
     CHECK (netDue >= 0),
     CHECK (roomCharge >= 0),
     CHECK (servicesCharge >= 0),
+);
+
+GO
+ALTER TABLE Invoice
+ADD roomBookingDeposit DECIMAL(18, 2);
+ALTER TABLE Invoice
+ADD taxRate FLOAT NOT NULL DEFAULT 0.1 CHECK (taxRate >= 0 AND taxRate <= 1),
+    totalAmount AS ((roomCharge + servicesCharge - roomBookingDeposit) * (1+taxRate)) PERSISTED;
+
+ALTER TABLE Invoice
+ADD earlyCheckinFee DECIMAL(18,2) NULL,
+    lateCheckoutFee DECIMAL(18,2) NULL,
+    earlyHours INT NULL,
+    lateHours INT NULL;
+GO
+
+-- Thêm các cột mới cho luồng thanh toán mới
+ALTER TABLE Invoice
+ADD isPaid BIT NOT NULL DEFAULT 0,              -- 0 = Chưa thanh toán, 1 = Đã thanh toán
+    paymentDate DATETIME NULL,                  -- Ngày thanh toán thực tế
+    paymentMethod NVARCHAR(20) NULL CHECK (paymentMethod IN ('CASH', 'CARD', 'TRANSFER', NULL)),
+    checkoutType NVARCHAR(20) NULL CHECK (checkoutType IN ('CHECKOUT_THEN_PAY', 'PAY_THEN_CHECKOUT', NULL));
+GO
+
+-- Thêm cột invoiceID vào HistoryCheckOut
+ALTER TABLE HistoryCheckOut
+ADD invoiceID NVARCHAR(15) NULL,
+CONSTRAINT FK_HistoryCheckOut_Invoice FOREIGN KEY (invoiceID) REFERENCES Invoice(invoiceID) ON DELETE NO ACTION;
+GO
+
+-- Tạo bảng ConfirmationReceipt (Phiếu xác nhận đặt phòng/nhận phòng)
+CREATE TABLE ConfirmationReceipt (
+    receiptID NVARCHAR(15) NOT NULL PRIMARY KEY,
+    receiptType NVARCHAR(15) NOT NULL CHECK (receiptType IN ('RESERVATION', 'CHECKIN')),
+    issueDate DATETIME NOT NULL DEFAULT GETDATE(),
+    reservationFormID NVARCHAR(15) NULL,
+    invoiceID NVARCHAR(15) NULL,
+    customerName NVARCHAR(50) NOT NULL,
+    customerPhone NVARCHAR(10) NOT NULL,
+    customerEmail NVARCHAR(50) NULL,
+    roomID NVARCHAR(15) NOT NULL,
+    roomCategoryName NVARCHAR(50) NOT NULL,
+    checkInDate DATETIME NOT NULL,
+    checkOutDate DATETIME NULL,
+    priceUnit NVARCHAR(15) NULL,
+    unitPrice MONEY NULL,
+    deposit MONEY NULL,
+    totalAmount MONEY NULL,
+    employeeName NVARCHAR(50) NULL,
+    notes NVARCHAR(500) NULL,
+    qrCode NVARCHAR(200) NULL,
+    
+    CONSTRAINT FK_ConfirmationReceipt_ReservationForm 
+        FOREIGN KEY (reservationFormID) REFERENCES ReservationForm(reservationFormID)
+        ON DELETE NO ACTION,
+    CONSTRAINT FK_ConfirmationReceipt_Invoice 
+        FOREIGN KEY (invoiceID) REFERENCES Invoice(invoiceID)
+        ON DELETE NO ACTION,
+    
+    -- Phiếu RESERVATION phải có reservationFormID
+    CONSTRAINT CHK_Receipt_ReservationType 
+        CHECK (
+            (receiptType = 'RESERVATION' AND reservationFormID IS NOT NULL) OR
+            (receiptType = 'CHECKIN')
+        )
 );
 GO
 
@@ -363,6 +433,21 @@ BEGIN
         WHEN @tableName = 'Invoice' THEN 
             ISNULL((SELECT MAX(CAST(SUBSTRING(invoiceID, LEN(@prefix) + 1, @padLength) AS INT)) 
                     FROM Invoice WHERE invoiceID LIKE @prefix + '%'), 0)
+        WHEN @tableName = 'ServiceCategory' THEN
+            ISNULL((SELECT MAX(CAST(SUBSTRING(serviceCategoryID, LEN(@prefix) + 1, @padLength) AS INT))
+                    FROM ServiceCategory WHERE serviceCategoryID LIKE @prefix + '%'), 0)
+        WHEN @tableName = 'HotelService' THEN
+            ISNULL((SELECT MAX(CAST(SUBSTRING(hotelServiceId, LEN(@prefix) + 1, @padLength) AS INT))
+                    FROM HotelService WHERE hotelServiceId LIKE @prefix + '%'), 0)
+        WHEN @tableName = 'Pricing' THEN
+            ISNULL((SELECT MAX(CAST(SUBSTRING(pricingID, LEN(@prefix) + 1, @padLength) AS INT))
+                    FROM Pricing WHERE pricingID LIKE @prefix + '%'), 0)
+        WHEN @tableName = 'User' THEN
+            ISNULL((SELECT MAX(CAST(SUBSTRING(userID, LEN(@prefix) + 1, @padLength) AS INT))
+                    FROM [User] WHERE userID LIKE @prefix + '%'), 0)
+        WHEN @tableName = 'ConfirmationReceipt' THEN
+            ISNULL((SELECT MAX(CAST(SUBSTRING(receiptID, LEN(@prefix) + 1, @padLength) AS INT))
+                    FROM ConfirmationReceipt WHERE receiptID LIKE @prefix + '%'), 0)
         ELSE 0
     END;
     
@@ -382,7 +467,9 @@ CREATE OR ALTER PROCEDURE sp_CreateReservation
     @roomID NVARCHAR(15),
     @customerID NVARCHAR(15),
     @employeeID NVARCHAR(15),
-    @roomBookingDeposit FLOAT
+    @roomBookingDeposit FLOAT,
+    @priceUnit NVARCHAR(15),
+    @unitPrice MONEY
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -444,22 +531,41 @@ BEGIN
             RETURN -1;
         END
         
+        -- Kiểm tra hình thức thuê hợp lệ
+        IF @priceUnit NOT IN ('DAY', 'HOUR')
+        BEGIN
+            RAISERROR('Hình thức thuê phải là DAY hoặc HOUR.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đơn giá hợp lệ
+        IF @unitPrice <= 0
+        BEGIN
+            RAISERROR('Đơn giá phải lớn hơn 0.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
         -- Kiểm tra trùng lịch đặt phòng
         IF EXISTS (
             SELECT 1
-            FROM ReservationForm
-            WHERE roomID = @roomID
-              AND isActivate = 'ACTIVATE'
-              AND (
-                  (@checkInDate BETWEEN checkInDate AND checkOutDate)
-                  OR
-                  (@checkOutDate BETWEEN checkInDate AND checkOutDate)
-                  OR
-                  (@checkInDate <= checkInDate AND @checkOutDate >= checkOutDate)
-              )
+            FROM ReservationForm rf
+            OUTER APPLY (
+                SELECT MAX(ho.checkOutDate) AS checkOutDateActual
+                FROM HistoryCheckOut ho
+                WHERE ho.reservationFormID = rf.reservationFormID
+            ) ho
+            WHERE rf.roomID = @roomID
+            AND rf.isActivate = 'ACTIVATE'
+            AND (
+                    (@checkInDate < ISNULL(ho.checkOutDateActual, rf.checkOutDate))
+                    AND
+                    (@checkOutDate > rf.checkInDate)
+            )
         )
         BEGIN
-            RAISERROR('Phòng đã được đặt trong khoảng thời gian này.', 16, 1);
+            RAISERROR(N'Phòng đã được đặt trong khoảng thời gian này.', 16, 1);
             ROLLBACK TRANSACTION;
             RETURN -1;
         END
@@ -470,12 +576,15 @@ BEGIN
         -- Thêm phiếu đặt phòng mới
         INSERT INTO ReservationForm (
             reservationFormID, reservationDate, checkInDate, checkOutDate,
-            employeeID, roomID, customerID, roomBookingDeposit
+            employeeID, roomID, customerID, roomBookingDeposit, priceUnit, unitPrice
         )
         VALUES (
             @reservationFormID, GETDATE(), @checkInDate, @checkOutDate,
-            @employeeID, @roomID, @customerID, @roomBookingDeposit
+            @employeeID, @roomID, @customerID, @roomBookingDeposit, @priceUnit, @unitPrice
         );
+
+        -- KHÔNG CẬP NHẬT Room.status = 'RESERVED' NGAY NỮA
+        -- Trigger TR_Room_AutoReserve sẽ tự động cập nhật khi còn 5 giờ đến check-in
         
         -- Trả về thông tin đặt phòng
         SELECT 
@@ -548,103 +657,825 @@ BEGIN
         @roomBookingDeposit = @roomBookingDeposit;
 END;
 GO
+
+-------------------------------------
+-- STORED PROCEDURE TẠO PHIẾU XÁC NHẬN ĐẶT PHÒNG/NHẬN PHÒNG
+-------------------------------------
+CREATE OR ALTER PROCEDURE sp_CreateConfirmationReceipt
+    @receiptType NVARCHAR(15), -- 'RESERVATION' hoặc 'CHECKIN'
+    @reservationFormID NVARCHAR(15),
+    @invoiceID NVARCHAR(15) = NULL,
+    @employeeID NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Validate input
+        IF @receiptType NOT IN ('RESERVATION', 'CHECKIN')
+        BEGIN
+            RAISERROR('Receipt type phải là RESERVATION hoặc CHECKIN', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Lấy thông tin từ ReservationForm
+        DECLARE @customerID NVARCHAR(15);
+        DECLARE @roomID NVARCHAR(15);
+        DECLARE @checkInDate DATETIME;
+        DECLARE @checkOutDate DATETIME;
+        DECLARE @priceUnit NVARCHAR(15);
+        DECLARE @unitPrice MONEY;
+        DECLARE @deposit MONEY;
+        
+        SELECT 
+            @customerID = rf.customerID,
+            @roomID = rf.roomID,
+            @checkInDate = rf.checkInDate,
+            @checkOutDate = rf.checkOutDate,
+            @priceUnit = rf.priceUnit,
+            @unitPrice = rf.unitPrice,
+            @deposit = rf.roomBookingDeposit
+        FROM ReservationForm rf
+        WHERE rf.reservationFormID = @reservationFormID;
+        
+        IF @customerID IS NULL
+        BEGIN
+            RAISERROR('Không tìm thấy reservation form', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Lấy thông tin khách hàng
+        DECLARE @customerName NVARCHAR(50);
+        DECLARE @customerPhone NVARCHAR(10);
+        DECLARE @customerEmail NVARCHAR(50);
+        
+        SELECT 
+            @customerName = c.fullName,
+            @customerPhone = c.phoneNumber,
+            @customerEmail = c.email
+        FROM Customer c
+        WHERE c.customerID = @customerID;
+        
+        -- Lấy thông tin phòng
+        DECLARE @roomCategoryName NVARCHAR(50);
+        
+        SELECT 
+            @roomCategoryName = rc.roomCategoryName
+        FROM Room r
+        JOIN RoomCategory rc ON r.roomCategoryID = rc.roomCategoryID
+        WHERE r.roomID = @roomID;
+        
+        -- Lấy tên nhân viên
+        DECLARE @employeeName NVARCHAR(50);
+        SELECT @employeeName = fullName FROM Employee WHERE employeeID = @employeeID;
+        
+        -- Lấy tổng tiền nếu là CHECK-IN và có invoice
+        DECLARE @totalAmount MONEY = NULL;
+        IF @receiptType = 'CHECKIN' AND @invoiceID IS NOT NULL
+        BEGIN
+            SELECT @totalAmount = totalAmount FROM Invoice WHERE invoiceID = @invoiceID;
+        END
+        
+        -- Tạo mã phiếu xác nhận
+        DECLARE @receiptID NVARCHAR(15) = dbo.fn_GenerateID('CR-', 'ConfirmationReceipt', 'receiptID', 6);
+        
+        -- Tạo QR code (có thể là URL hoặc JSON)
+        DECLARE @qrCode NVARCHAR(200) = 'RECEIPT:' + @receiptID + '|ROOM:' + @roomID + '|DATE:' + CONVERT(NVARCHAR, GETDATE(), 120);
+        
+        -- Insert phiếu xác nhận
+        INSERT INTO ConfirmationReceipt (
+            receiptID, receiptType, issueDate,
+            reservationFormID, invoiceID,
+            customerName, customerPhone, customerEmail,
+            roomID, roomCategoryName,
+            checkInDate, checkOutDate,
+            priceUnit, unitPrice, deposit, totalAmount,
+            employeeName, qrCode
+        )
+        VALUES (
+            @receiptID, @receiptType, GETDATE(),
+            @reservationFormID, @invoiceID,
+            @customerName, @customerPhone, @customerEmail,
+            @roomID, @roomCategoryName,
+            @checkInDate, @checkOutDate,
+            @priceUnit, @unitPrice, @deposit, @totalAmount,
+            @employeeName, @qrCode
+        );
+        
+        -- Trả về thông tin phiếu
+        SELECT 
+            receiptID, receiptType, issueDate, reservationFormID,
+            customerName, 
+            ISNULL(invoiceID, '') AS invoiceID,  -- Fix: Đảm bảo invoiceID luôn có giá trị
+            customerPhone, customerEmail,
+            roomID, roomCategoryName,
+            checkInDate, checkOutDate,
+            priceUnit, unitPrice, deposit, totalAmount,
+            employeeName, qrCode, notes
+        FROM ConfirmationReceipt
+        WHERE receiptID = @receiptID;
+        
+        COMMIT TRANSACTION;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN -1;
+    END CATCH
+END;
+GO
+
+-------------------------------------
+-- TRIGGER TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI PHÒNG KHI SẮP ĐẾN GIỜ CHECK-IN
+-------------------------------------
+
+-- Stored procedure để cập nhật trạng thái phòng RESERVED
+-- Gọi định kỳ (mỗi 30 phút) hoặc khi cần kiểm tra
+CREATE OR ALTER PROCEDURE sp_UpdateRoomStatusToReserved
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Cập nhật tất cả phòng có reservation còn 5 giờ nữa đến check-in
+    UPDATE Room
+    SET roomStatus = 'RESERVED'
+    WHERE roomID IN (
+        SELECT DISTINCT rf.roomID
+        FROM ReservationForm rf
+        LEFT JOIN HistoryCheckin hc ON rf.reservationFormID = hc.reservationFormID
+        WHERE rf.isActivate = 'ACTIVATE'
+        AND hc.historyCheckinID IS NULL  -- Chưa check-in
+        AND rf.checkInDate <= DATEADD(HOUR, 5, GETDATE())  -- Còn <= 5 giờ
+        AND rf.checkInDate > GETDATE()  -- Chưa quá giờ check-in
+    )
+    AND roomStatus = 'AVAILABLE';  -- Chỉ update phòng đang AVAILABLE
+    
+    -- Trả về số lượng phòng đã cập nhật
+    SELECT @@ROWCOUNT AS RoomsUpdated;
+END;
+GO
+
+-- View để theo dõi phòng sắp được reserved
+CREATE OR ALTER VIEW vw_RoomsNearCheckIn
+AS
+SELECT 
+    r.roomID,
+    r.roomStatus,
+    rf.reservationFormID,
+    rf.checkInDate,
+    DATEDIFF(MINUTE, GETDATE(), rf.checkInDate) AS MinutesUntilCheckIn,
+    c.fullName AS CustomerName,
+    c.phoneNumber AS CustomerPhone
+FROM Room r
+JOIN ReservationForm rf ON r.roomID = rf.roomID
+JOIN Customer c ON rf.customerID = c.customerID
+LEFT JOIN HistoryCheckin hc ON rf.reservationFormID = hc.reservationFormID
+WHERE rf.isActivate = 'ACTIVATE'
+AND hc.historyCheckinID IS NULL  -- Chưa check-in
+AND rf.checkInDate > GETDATE()  -- Chưa quá giờ
+AND rf.checkInDate <= DATEADD(HOUR, 6, GETDATE());  -- Trong vòng 6 giờ tới
+GO
+
 -------------------------------------
 -- trigger quản lý hóa đơn
 -------------------------------------
-CREATE TRIGGER TR_Invoice_ManageInsert
+CREATE OR ALTER TRIGGER TR_Invoice_ManageInsert
 ON Invoice
 INSTEAD OF INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
-    
-    -- Kiểm tra điều kiện trigger TR_Check_Invoice_Date
-    IF EXISTS (
-        SELECT 1
-        FROM inserted i
-        JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
-        WHERE i.invoiceDate <= rf.checkInDate
-    )
-    BEGIN
-        RAISERROR('Ngày xuất hóa đơn phải sau hoặc bằng ngày check-in.', 16, 1);
-        RETURN;
-    END
-    
-    -- TÍnh toán tiền phòng dựa trên số ngày lưu trú
-    DECLARE @reservationFormID NVARCHAR(15), @checkInDate DATETIME, @checkOutDate DATETIME,
-            @roomCategoryID NVARCHAR(15), @dayPrice DECIMAL(18, 2), @hourPrice DECIMAL(18, 2),
-            @roomCharge DECIMAL(18, 2);
-            
-    SELECT @reservationFormID = i.reservationFormID,
-           @checkInDate = rf.checkInDate,
-           @checkOutDate = rf.checkOutDate,
-           @roomCategoryID = r.roomCategoryID
+
+    -- ================================================================
+    -- HỖ TRỢ LUỒNG THANH TOÁN MỚI:
+    -- 1. CHECKOUT_THEN_PAY: Checkout trước → Tạo invoice (isPaid=0) → Thanh toán sau
+    -- 2. PAY_THEN_CHECKOUT: Thanh toán trước (isPaid=1) → Checkout sau
+    -- ================================================================
+
+    DECLARE @reservationFormID NVARCHAR(15),
+            @priceUnit NVARCHAR(15),
+            @unitPrice MONEY,
+            @roomCategoryID NVARCHAR(15),
+            @roomBookingDeposit MONEY,
+            @checkInDateExpected DATETIME,
+            @checkInDateActual DATETIME,
+            @checkOutDateExpected DATETIME,
+            @checkOutDateActual DATETIME,
+            @dayPrice MONEY,
+            @hourPrice MONEY,
+            @roomCharge DECIMAL(18,2),
+            @earlyCheckinFee DECIMAL(18,2) = 0,
+            @lateCheckoutFee DECIMAL(18,2) = 0,
+            @checkoutType NVARCHAR(20),
+            @isPaid BIT;
+
+    SELECT 
+        @reservationFormID = i.reservationFormID,
+        @priceUnit = rf.priceUnit,
+        @unitPrice = rf.unitPrice,
+        @roomBookingDeposit = rf.roomBookingDeposit,
+        @roomCategoryID = r.roomCategoryID,
+        @checkInDateExpected = rf.checkInDate,
+        @checkOutDateExpected = rf.checkOutDate,
+        @checkoutType = i.checkoutType,
+        @isPaid = ISNULL(i.isPaid, 0)
     FROM inserted i
     JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
     JOIN Room r ON rf.roomID = r.roomID;
+
+    SELECT @checkInDateActual = checkInDate
+    FROM HistoryCheckin
+    WHERE reservationFormID = @reservationFormID;
+
+    SELECT @checkOutDateActual = checkOutDate
+    FROM HistoryCheckOut
+    WHERE reservationFormID = @reservationFormID;
+
+    SELECT @dayPrice = price 
+    FROM Pricing 
+    WHERE roomCategoryID = @roomCategoryID AND priceUnit = 'DAY';
     
-    -- Kiểm tra thời gian lưu trú hợp lệ
-    IF @checkOutDate < @checkInDate
+    SELECT @hourPrice = price 
+    FROM Pricing 
+    WHERE roomCategoryID = @roomCategoryID AND priceUnit = 'HOUR';
+    
+    IF @dayPrice IS NULL OR @dayPrice = 0 SET @dayPrice = @unitPrice;
+    IF @hourPrice IS NULL OR @hourPrice = 0 SET @hourPrice = @unitPrice;
+
+    -- ================================================================================
+    -- LOGIC TÍNH TIỀN THEO LUỒNG THANH TOÁN:
+    -- 
+    -- CHECKOUT_THEN_PAY: 
+    --   - Tính theo thời gian THỰC TẾ (checkInActual → checkOutActual)
+    --   - Bao gồm phí check-in sớm và checkout muộn
+    --
+    -- PAY_THEN_CHECKOUT:
+    --   - Lần đầu: Tính theo thời gian DỰ KIẾN (checkInActual → checkOutExpected)
+    --   - Chỉ tính phí check-in sớm, KHÔNG tính checkout muộn (vì chưa checkout)
+    --   - Sau khi checkout thực tế: Tính lại với checkOutActual + phí muộn
+    -- ================================================================================
+    DECLARE @bookingMinutes INT;
+    DECLARE @timeUnits INT;
+    DECLARE @effectiveCheckIn DATETIME = ISNULL(@checkInDateActual, @checkInDateExpected);
+    DECLARE @effectiveCheckOut DATETIME;
+    
+    -- Xác định thời gian checkout dựa trên loại thanh toán
+    IF @checkoutType = 'PAY_THEN_CHECKOUT' AND @checkOutDateActual IS NULL
     BEGIN
-        RAISERROR ('Thời gian trả phòng phải lớn hơn hoặc bằng thời gian nhận phòng.', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
+        -- Thanh toán trước: Tính theo checkout DỰ KIẾN
+        SET @effectiveCheckOut = @checkOutDateExpected;
+    END
+    ELSE
+    BEGIN
+        -- Checkout rồi thanh toán HOẶC đã có checkout thực tế: Tính theo THỰC TẾ
+        SET @effectiveCheckOut = ISNULL(@checkOutDateActual, @checkOutDateExpected);
     END
     
-    -- Lấy giá theo ngày và giờ
-    SELECT @dayPrice = p.price FROM Pricing p 
-    WHERE p.roomCategoryID = @roomCategoryID AND p.priceUnit = 'DAY';
+    -- Tính số phút thực tế khách ở
+    SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
     
-    SELECT @hourPrice = p.price FROM Pricing p 
-    WHERE p.roomCategoryID = @roomCategoryID AND p.priceUnit = 'HOUR';
-    
-    -- Tính toán phí phòng dựa trên số ngày lưu trú
-    SET @roomCharge = DATEDIFF(DAY, @checkInDate, @checkOutDate) * @dayPrice;
-    IF @roomCharge < 0
-        SET @roomCharge = 0;
-    
-    -- Thực hiện INSERT với roomCharge được tính toán
-    INSERT INTO Invoice(invoiceID, invoiceDate, roomCharge, servicesCharge, reservationFormID)
-    SELECT invoiceID, invoiceDate, @roomCharge, servicesCharge, reservationFormID
-    FROM inserted;
+    IF @priceUnit = 'DAY'
+    BEGIN
+        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
+        SET @roomCharge = @timeUnits * @unitPrice;
+    END
+    ELSE IF @priceUnit = 'HOUR'
+    BEGIN
+        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 60.0) END;
+        SET @roomCharge = @timeUnits * @unitPrice;
+    END
+
+    -- BƯỚC 2: PHÍ CHECK-IN SỚM
+    IF @checkInDateActual IS NOT NULL AND @checkInDateActual < @checkInDateExpected
+    BEGIN
+        DECLARE @earlyMinutes INT = DATEDIFF(MINUTE, @checkInDateActual, @checkInDateExpected);
+        DECLARE @freeMinutesEarly INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
+        
+        IF @earlyMinutes > @freeMinutesEarly
+        BEGIN
+            DECLARE @chargeableEarlyMinutes INT = @earlyMinutes - @freeMinutesEarly;
+            
+            IF @priceUnit = 'HOUR'
+            BEGIN
+                -- **BẬC THANG GIỐNG CONTROLLER**
+                DECLARE @earlyHours DECIMAL(10,2) = CEILING(@chargeableEarlyMinutes / 60.0);
+                DECLARE @tier1E DECIMAL(18,2) = 0, @tier2E DECIMAL(18,2) = 0, @tier3E DECIMAL(18,2) = 0;
+                
+                IF @earlyHours <= 2
+                    SET @tier1E = @earlyHours * @hourPrice;
+                ELSE
+                    SET @tier1E = 2 * @hourPrice;
+                
+                IF @earlyHours > 2 AND @earlyHours <= 6
+                    SET @tier2E = (@earlyHours - 2) * @hourPrice * 0.8;
+                ELSE IF @earlyHours > 6
+                    SET @tier2E = 4 * @hourPrice * 0.8;
+                
+                IF @earlyHours > 6
+                    SET @tier3E = (@earlyHours - 6) * @hourPrice * 0.8;
+                
+                SET @earlyCheckinFee = @tier1E + @tier2E + @tier3E;
+            END
+            ELSE -- DAY
+            BEGIN
+                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
+                DECLARE @currentE DATETIME = @checkInDateActual;
+                DECLARE @endE DATETIME = @checkInDateExpected;
+                DECLARE @totalE DECIMAL(18,2) = 0;
+                
+                WHILE @currentE < @endE
+                BEGIN
+                    DECLARE @hourE INT = DATEPART(HOUR, @currentE);
+                    DECLARE @rateE DECIMAL(5,2) = 0;
+                    DECLARE @bracketE DATETIME;
+                    
+                    IF @hourE >= 5 AND @hourE < 9
+                    BEGIN
+                        SET @rateE = 0.5;
+                        SET @bracketE = DATEADD(HOUR, 9 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
+                    END
+                    ELSE IF @hourE >= 9 AND @hourE < 14
+                    BEGIN
+                        SET @rateE = 0.3;
+                        SET @bracketE = DATEADD(HOUR, 14 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
+                    END
+                    ELSE
+                    BEGIN
+                        SET @rateE = 0;
+                        SET @bracketE = DATEADD(HOUR, 1, @currentE);
+                    END
+                    
+                    DECLARE @actualBracketE DATETIME = CASE WHEN @bracketE < @endE THEN @bracketE ELSE @endE END;
+                    DECLARE @minutesE INT = DATEDIFF(MINUTE, @currentE, @actualBracketE);
+                    
+                    IF @rateE > 0
+                        SET @totalE = @totalE + (@minutesE / 1440.0) * @dayPrice * @rateE;
+                    
+                    SET @currentE = @actualBracketE;
+                END
+                
+                SET @earlyCheckinFee = @totalE;
+            END
+        END
+    END
+
+    -- BƯỚC 3: PHÍ CHECK-OUT MUỘN
+    IF @checkOutDateActual IS NOT NULL AND @checkOutDateActual > @checkOutDateExpected
+    BEGIN
+        DECLARE @lateMinutes INT = DATEDIFF(MINUTE, @checkOutDateExpected, @checkOutDateActual);
+        DECLARE @freeMinutesLate INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
+        
+        IF @lateMinutes > @freeMinutesLate
+        BEGIN
+            DECLARE @chargeableLateMinutes INT = @lateMinutes - @freeMinutesLate;
+            
+            IF @priceUnit = 'HOUR'
+            BEGIN
+                -- **BẬC THANG GIỐNG CONTROLLER**
+                DECLARE @lateHours DECIMAL(10,2) = CEILING(@chargeableLateMinutes / 60.0);
+                DECLARE @tier1L DECIMAL(18,2) = 0, @tier2L DECIMAL(18,2) = 0, @tier3L DECIMAL(18,2) = 0;
+                
+                IF @lateHours <= 2
+                    SET @tier1L = @lateHours * @hourPrice;
+                ELSE
+                    SET @tier1L = 2 * @hourPrice;
+                
+                IF @lateHours > 2 AND @lateHours <= 6
+                    SET @tier2L = (@lateHours - 2) * @hourPrice * 0.8;
+                ELSE IF @lateHours > 6
+                    SET @tier2L = 4 * @hourPrice * 0.8;
+                
+                IF @lateHours > 6
+                    SET @tier3L = (@lateHours - 6) * @hourPrice * 0.8;
+                
+                SET @lateCheckoutFee = @tier1L + @tier2L + @tier3L;
+            END
+            ELSE -- DAY
+            BEGIN
+                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
+                DECLARE @currentL DATETIME = DATEADD(MINUTE, @freeMinutesLate, @checkOutDateExpected);
+                DECLARE @endL DATETIME = @checkOutDateActual;
+                DECLARE @totalL DECIMAL(18,2) = 0;
+                
+                WHILE @currentL < @endL
+                BEGIN
+                    DECLARE @hourL INT = DATEPART(HOUR, @currentL);
+                    DECLARE @rateL DECIMAL(5,2) = 0;
+                    DECLARE @bracketL DATETIME;
+                    
+                    IF @hourL >= 12 AND @hourL < 15
+                    BEGIN
+                        SET @rateL = 0.3;
+                        SET @bracketL = DATEADD(HOUR, 15 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
+                    END
+                    ELSE IF @hourL >= 15 AND @hourL < 18
+                    BEGIN
+                        SET @rateL = 0.5;
+                        SET @bracketL = DATEADD(HOUR, 18 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
+                    END
+                    ELSE IF @hourL >= 18
+                    BEGIN
+                        SET @rateL = 1.0;
+                        SET @bracketL = DATEADD(HOUR, 24 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
+                    END
+                    ELSE
+                    BEGIN
+                        SET @rateL = 0;
+                        SET @bracketL = DATEADD(HOUR, 1, @currentL);
+                    END
+                    
+                    DECLARE @actualBracketL DATETIME = CASE WHEN @bracketL < @endL THEN @bracketL ELSE @endL END;
+                    DECLARE @minutesL INT = DATEDIFF(MINUTE, @currentL, @actualBracketL);
+                    
+                    IF @rateL > 0
+                        SET @totalL = @totalL + (@minutesL / 1440.0) * @dayPrice * @rateL;
+                    
+                    SET @currentL = @actualBracketL;
+                END
+                
+                SET @lateCheckoutFee = @totalL;
+            END
+        END
+    END
+
+    -- CỘNG PHÍ VÀO ROOMCHARGE
+    SET @roomCharge = @roomCharge + @earlyCheckinFee + @lateCheckoutFee;
+
+    -- TÍNH PHÍ DỊCH VỤ
+    DECLARE @servicesCharge DECIMAL(18,2);
+    SELECT @servicesCharge = ISNULL(SUM(quantity * unitPrice), 0)
+    FROM RoomUsageService
+    WHERE reservationFormID = @reservationFormID;
+
+    -- INSERT
+    INSERT INTO Invoice (
+        invoiceID, invoiceDate, earlyHours, earlyCheckinFee, lateHours, lateCheckoutFee, roomCharge, servicesCharge, roomBookingDeposit, reservationFormID, paymentDate, paymentMethod, checkoutType, isPaid
+    )
+    SELECT 
+        COALESCE(i.invoiceID, dbo.fn_GenerateID('INV-', 'Invoice', 'invoiceID', 6)),
+        COALESCE(i.invoiceDate, GETDATE()),
+        ROUND(@earlyHours, 0),
+        ROUND(@earlyCheckinFee, 0),
+        ROUND(@lateHours, 0),
+        ROUND(@lateCheckoutFee, 0),
+        ROUND(@roomCharge, 0),
+        ROUND(@servicesCharge, 0),
+        ROUND(@roomBookingDeposit, 0),
+        i.reservationFormID,
+        CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentDate, GETDATE()) ELSE NULL END,
+        CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentMethod, 'CASH') ELSE NULL END,
+        i.checkoutType,
+        @isPaid
+    FROM inserted i;
 END;
 GO
 
--------------------------------------------
--- trigger riêng cho UPDATE Invoice
----------------------------------------------
-CREATE TRIGGER TR_Invoice_ManageUpdate
+-- =====================================================================
+-- TRIGGER TR_Invoice_ManageUpdate
+-- =====================================================================
+CREATE OR ALTER TRIGGER TR_Invoice_ManageUpdate
 ON Invoice
 INSTEAD OF UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- ================================================================
+    -- HỖ TRỢ LUỒNG THANH TOÁN MỚI:
+    -- 1. CHECKOUT_THEN_PAY: Checkout trước → Tạo invoice (isPaid=0) → Thanh toán sau
+    -- 2. PAY_THEN_CHECKOUT: Thanh toán trước (isPaid=1) → Checkout sau
+    -- ================================================================
+
+    DECLARE @reservationFormID NVARCHAR(15),
+            @priceUnit NVARCHAR(15),
+            @unitPrice MONEY,
+            @roomCategoryID NVARCHAR(15),
+            @roomBookingDeposit MONEY,
+            @checkInDateExpected DATETIME,
+            @checkInDateActual DATETIME,
+            @checkOutDateExpected DATETIME,
+            @checkOutDateActual DATETIME,
+            @dayPrice MONEY,
+            @hourPrice MONEY,
+            @roomCharge DECIMAL(18,2),
+            @earlyCheckinFee DECIMAL(18,2) = 0,
+            @lateCheckoutFee DECIMAL(18,2) = 0,
+            @checkoutType NVARCHAR(20),
+            @isPaid BIT;
+
+    SELECT 
+        @reservationFormID = i.reservationFormID,
+        @priceUnit = rf.priceUnit,
+        @unitPrice = rf.unitPrice,
+        @roomBookingDeposit = rf.roomBookingDeposit,
+        @roomCategoryID = r.roomCategoryID,
+        @checkInDateExpected = rf.checkInDate,
+        @checkOutDateExpected = rf.checkOutDate,
+        @checkoutType = i.checkoutType,
+        @isPaid = ISNULL(i.isPaid, 0)
+    FROM inserted i
+    JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
+    JOIN Room r ON rf.roomID = r.roomID;
+
+    SELECT @checkInDateActual = checkInDate
+    FROM HistoryCheckin
+    WHERE reservationFormID = @reservationFormID;
+
+    SELECT @checkOutDateActual = checkOutDate
+    FROM HistoryCheckOut
+    WHERE reservationFormID = @reservationFormID;
+
+    SELECT @dayPrice = price 
+    FROM Pricing 
+    WHERE roomCategoryID = @roomCategoryID AND priceUnit = 'DAY';
     
-    -- Kiểm tra điều kiện từ trigger TR_Check_Invoice_Date
-    IF EXISTS (
-        SELECT 1
-        FROM inserted i
-        JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
-        WHERE i.invoiceDate < rf.checkInDate
-    )
+    SELECT @hourPrice = price 
+    FROM Pricing 
+    WHERE roomCategoryID = @roomCategoryID AND priceUnit = 'HOUR';
+    
+    IF @dayPrice IS NULL OR @dayPrice = 0 SET @dayPrice = @unitPrice;
+    IF @hourPrice IS NULL OR @hourPrice = 0 SET @hourPrice = @unitPrice;
+
+    -- ================================================================================
+    -- LOGIC TÍNH TIỀN THEO LUỒNG THANH TOÁN:
+    -- 
+    -- CHECKOUT_THEN_PAY: 
+    --   - Tính theo thời gian THỰC TẾ (checkInActual → checkOutActual)
+    --   - Bao gồm phí check-in sớm và checkout muộn
+    --
+    -- PAY_THEN_CHECKOUT:
+    --   - Lần đầu: Tính theo thời gian DỰ KIẾN (checkInActual → checkOutExpected)
+    --   - Chỉ tính phí check-in sớm, KHÔNG tính checkout muộn (vì chưa checkout)
+    --   - Sau khi checkout thực tế: Tính lại với checkOutActual + phí muộn
+    -- ================================================================================
+    DECLARE @bookingMinutes INT;
+    DECLARE @timeUnits INT;
+    DECLARE @effectiveCheckIn DATETIME = ISNULL(@checkInDateActual, @checkInDateExpected);
+    DECLARE @effectiveCheckOut DATETIME;
+    
+    -- Xác định thời gian checkout dựa trên loại thanh toán
+    IF @checkoutType = 'PAY_THEN_CHECKOUT' AND @checkOutDateActual IS NULL
     BEGIN
-        RAISERROR('Ngày xuất hóa đơn phải sau hoặc bằng ngày check-in.', 16, 1);
-        RETURN;
+        -- Thanh toán trước: Tính theo checkout DỰ KIẾN
+        SET @effectiveCheckOut = @checkOutDateExpected;
+    END
+    ELSE
+    BEGIN
+        -- Checkout rồi thanh toán HOẶC đã có checkout thực tế: Tính theo THỰC TẾ
+        SET @effectiveCheckOut = ISNULL(@checkOutDateActual, @checkOutDateExpected);
     END
     
-    -- Nếu dữ liệu hợp lệ, tiến hành UPDATE
+    -- Tính số phút thực tế khách ở
+    SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
+    
+    IF @priceUnit = 'DAY'
+    BEGIN
+        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
+        SET @roomCharge = @timeUnits * @unitPrice;
+    END
+    ELSE IF @priceUnit = 'HOUR'
+    BEGIN
+        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 60.0) END;
+        SET @roomCharge = @timeUnits * @unitPrice;
+    END
+
+    -- BƯỚC 2: PHÍ CHECK-IN SỚM
+    IF @checkInDateActual IS NOT NULL AND @checkInDateActual < @checkInDateExpected
+    
+    -- Tính số phút thực tế khách ở
+    SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
+    
+    IF @priceUnit = 'DAY'
+    BEGIN
+        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
+        SET @roomCharge = @timeUnits * @unitPrice;
+    END
+    ELSE IF @priceUnit = 'HOUR'
+    BEGIN
+        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 60.0) END;
+        SET @roomCharge = @timeUnits * @unitPrice;
+    END
+
+    -- BƯỚC 2: PHÍ CHECK-IN SỚM
+    IF @checkInDateActual IS NOT NULL AND @checkInDateActual < @checkInDateExpected
+    BEGIN
+        DECLARE @earlyMinutes INT = DATEDIFF(MINUTE, @checkInDateActual, @checkInDateExpected);
+        DECLARE @freeMinutesEarly INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
+        
+        IF @earlyMinutes > @freeMinutesEarly
+        BEGIN
+            DECLARE @chargeableEarlyMinutes INT = @earlyMinutes - @freeMinutesEarly;
+            
+            IF @priceUnit = 'HOUR'
+            BEGIN
+                -- **BẬC THANG GIỐNG CONTROLLER**
+                DECLARE @earlyHours DECIMAL(10,2) = CEILING(@chargeableEarlyMinutes / 60.0);
+                DECLARE @tier1E DECIMAL(18,2) = 0, @tier2E DECIMAL(18,2) = 0, @tier3E DECIMAL(18,2) = 0;
+                
+                IF @earlyHours <= 2
+                    SET @tier1E = @earlyHours * @hourPrice;
+                ELSE
+                    SET @tier1E = 2 * @hourPrice;
+                
+                IF @earlyHours > 2 AND @earlyHours <= 6
+                    SET @tier2E = (@earlyHours - 2) * @hourPrice * 0.8;
+                ELSE IF @earlyHours > 6
+                    SET @tier2E = 4 * @hourPrice * 0.8;
+                
+                IF @earlyHours > 6
+                    SET @tier3E = (@earlyHours - 6) * @hourPrice * 0.8;
+                
+                SET @earlyCheckinFee = @tier1E + @tier2E + @tier3E;
+            END
+            ELSE -- DAY
+            BEGIN
+                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
+                DECLARE @currentE DATETIME = @checkInDateActual;
+                DECLARE @endE DATETIME = @checkInDateExpected;
+                DECLARE @totalE DECIMAL(18,2) = 0;
+                
+                WHILE @currentE < @endE
+                BEGIN
+                    DECLARE @hourE INT = DATEPART(HOUR, @currentE);
+                    DECLARE @rateE DECIMAL(5,2) = 0;
+                    DECLARE @bracketE DATETIME;
+                    
+                    IF @hourE >= 5 AND @hourE < 9
+                    BEGIN
+                        SET @rateE = 0.5;
+                        SET @bracketE = DATEADD(HOUR, 9 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
+                    END
+                    ELSE IF @hourE >= 9 AND @hourE < 14
+                    BEGIN
+                        SET @rateE = 0.3;
+                        SET @bracketE = DATEADD(HOUR, 14 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
+                    END
+                    ELSE
+                    BEGIN
+                        SET @rateE = 0;
+                        SET @bracketE = DATEADD(HOUR, 1, @currentE);
+                    END
+                    
+                    DECLARE @actualBracketE DATETIME = CASE WHEN @bracketE < @endE THEN @bracketE ELSE @endE END;
+                    DECLARE @minutesE INT = DATEDIFF(MINUTE, @currentE, @actualBracketE);
+                    
+                    IF @rateE > 0
+                        SET @totalE = @totalE + (@minutesE / 1440.0) * @dayPrice * @rateE;
+                    
+                    SET @currentE = @actualBracketE;
+                END
+                
+                SET @earlyCheckinFee = @totalE;
+            END
+        END
+    END
+
+    -- BƯỚC 3: PHÍ CHECK-OUT MUỘN
+    IF @checkOutDateActual IS NOT NULL AND @checkOutDateActual > @checkOutDateExpected
+    BEGIN
+        DECLARE @lateMinutes INT = DATEDIFF(MINUTE, @checkOutDateExpected, @checkOutDateActual);
+        DECLARE @freeMinutesLate INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
+        
+        IF @lateMinutes > @freeMinutesLate
+        BEGIN
+            DECLARE @chargeableLateMinutes INT = @lateMinutes - @freeMinutesLate;
+            
+            IF @priceUnit = 'HOUR'
+            BEGIN
+                -- **BẬC THANG GIỐNG CONTROLLER**
+                DECLARE @lateHours DECIMAL(10,2) = CEILING(@chargeableLateMinutes / 60.0);
+                DECLARE @tier1L DECIMAL(18,2) = 0, @tier2L DECIMAL(18,2) = 0, @tier3L DECIMAL(18,2) = 0;
+                
+                IF @lateHours <= 2
+                    SET @tier1L = @lateHours * @hourPrice;
+                ELSE
+                    SET @tier1L = 2 * @hourPrice;
+                
+                IF @lateHours > 2 AND @lateHours <= 6
+                    SET @tier2L = (@lateHours - 2) * @hourPrice * 0.8;
+                ELSE IF @lateHours > 6
+                    SET @tier2L = 4 * @hourPrice * 0.8;
+                
+                IF @lateHours > 6
+                    SET @tier3L = (@lateHours - 6) * @hourPrice * 0.8;
+                
+                SET @lateCheckoutFee = @tier1L + @tier2L + @tier3L;
+            END
+            ELSE -- DAY
+            BEGIN
+                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
+                DECLARE @currentL DATETIME = DATEADD(MINUTE, @freeMinutesLate, @checkOutDateExpected);
+                DECLARE @endL DATETIME = @checkOutDateActual;
+                DECLARE @totalL DECIMAL(18,2) = 0;
+                
+                WHILE @currentL < @endL
+                BEGIN
+                    DECLARE @hourL INT = DATEPART(HOUR, @currentL);
+                    DECLARE @rateL DECIMAL(5,2) = 0;
+                    DECLARE @bracketL DATETIME;
+                    
+                    IF @hourL >= 12 AND @hourL < 15
+                    BEGIN
+                        SET @rateL = 0.3;
+                        SET @bracketL = DATEADD(HOUR, 15 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
+                    END
+                    ELSE IF @hourL >= 15 AND @hourL < 18
+                    BEGIN
+                        SET @rateL = 0.5;
+                        SET @bracketL = DATEADD(HOUR, 18 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
+                    END
+                    ELSE IF @hourL >= 18
+                    BEGIN
+                        SET @rateL = 1.0;
+                        SET @bracketL = DATEADD(HOUR, 24 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
+                    END
+                    ELSE
+                    BEGIN
+                        SET @rateL = 0;
+                        SET @bracketL = DATEADD(HOUR, 1, @currentL);
+                    END
+                    
+                    DECLARE @actualBracketL DATETIME = CASE WHEN @bracketL < @endL THEN @bracketL ELSE @endL END;
+                    DECLARE @minutesL INT = DATEDIFF(MINUTE, @currentL, @actualBracketL);
+                    
+                    IF @rateL > 0
+                        SET @totalL = @totalL + (@minutesL / 1440.0) * @dayPrice * @rateL;
+                    
+                    SET @currentL = @actualBracketL;
+                END
+                
+                SET @lateCheckoutFee = @totalL;
+            END
+        END
+    END
+
+    -- CỘNG PHÍ VÀO ROOMCHARGE
+    SET @roomCharge = @roomCharge + @earlyCheckinFee + @lateCheckoutFee;
+
+    -- TÍNH PHÍ DỊCH VỤ
+    DECLARE @servicesCharge DECIMAL(18,2);
+    SELECT @servicesCharge = ISNULL(SUM(quantity * unitPrice), 0)
+    FROM RoomUsageService
+    WHERE reservationFormID = @reservationFormID;
+
+    -- UPDATE
     UPDATE Invoice
-    SET invoiceID = i.invoiceID,
-        invoiceDate = i.invoiceDate,
-        roomCharge = i.roomCharge,
-        servicesCharge = i.servicesCharge,
-        reservationFormID = i.reservationFormID
-    FROM inserted i
-    WHERE Invoice.invoiceID = i.invoiceID;
+    SET invoiceDate = COALESCE(i.invoiceDate, GETDATE()),
+        roomCharge = ROUND(@roomCharge, 0),
+        servicesCharge = ROUND(@servicesCharge, 0),
+        roomBookingDeposit = ROUND(@roomBookingDeposit, 0),
+        earlyCheckinFee = ROUND(@earlyCheckinFee, 0),
+        lateCheckoutFee = ROUND(@lateCheckoutFee, 0),
+        earlyHours = ROUND(@earlyHours, 0),
+        lateHours = ROUND(@lateHours, 0),
+        isPaid = @isPaid,
+        paymentDate = CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentDate, GETDATE()) ELSE NULL END,
+        paymentMethod = CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentMethod, 'CASH') ELSE NULL END,
+        checkoutType = i.checkoutType
+    FROM Invoice inv
+    JOIN inserted i ON inv.invoiceID = i.invoiceID;
 END;
 GO
 
 
+--------------------------------------------------------
+-- TRIGGER KIỂM TRA THỜI GIAN CHECK-IN
+--------------------------------------------------------
+CREATE OR ALTER TRIGGER TR_HistoryCheckin_CheckTime
+ON HistoryCheckin
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Kiểm tra thời gian check-in có sớm hơn thời gian đã đăng ký không
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
+        WHERE i.checkInDate < rf.checkInDate
+    )
+    BEGIN
+        RAISERROR(N'Chưa đến giờ check-in. Vui lòng đợi đến thời gian đã đăng ký.', 16, 1);
+        RETURN;
+    END
+    
+    -- Nếu hợp lệ, thực hiện INSERT
+    INSERT INTO HistoryCheckin (historyCheckInID, checkInDate, reservationFormID, employeeID)
+    SELECT historyCheckInID, checkInDate, reservationFormID, employeeID
+    FROM inserted;
+END;
+GO
+
+DISABLE TRIGGER TR_HistoryCheckin_CheckTime ON HistoryCheckin;
+GO
 --------------------------------------------------------
 -- Trigger để cập nhật trạng thái phòng khi có checkin
 -------------------------------------------------------
@@ -677,9 +1508,9 @@ GO
 
 
 --trigger để kiểm tra trạng thái phòng khi thêm đặt phòng trong ReservationForm
-CREATE TRIGGER TR_ReservationForm_RoomStatusCheck
+CREATE OR ALTER TRIGGER TR_ReservationForm_RoomStatusCheck
 ON ReservationForm
-INSTEAD OF INSERT, UPDATE
+INSTEAD OF INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -702,14 +1533,17 @@ BEGIN
         SELECT 1
         FROM inserted i
         JOIN ReservationForm rf ON i.roomID = rf.roomID
+        OUTER APPLY (
+            SELECT MAX(ho.checkOutDate) AS checkOutDateActual
+            FROM HistoryCheckOut ho
+            WHERE ho.reservationFormID = rf.reservationFormID
+        ) ho
         WHERE rf.isActivate = 'ACTIVATE'
           AND rf.reservationFormID <> i.reservationFormID 
           AND (
-              (i.checkInDate BETWEEN rf.checkInDate AND rf.checkOutDate)
-              OR
-              (i.checkOutDate BETWEEN rf.checkInDate AND rf.checkOutDate)
-              OR
-              (i.checkInDate <= rf.checkInDate AND i.checkOutDate >= rf.checkOutDate)
+              (i.checkInDate < ISNULL(ho.checkOutDateActual, rf.checkOutDate))
+              AND
+              (i.checkOutDate > rf.checkInDate)
           )
     )
     BEGIN
@@ -717,32 +1551,17 @@ BEGIN
         RETURN;
     END
     
-    -- Nếu đảm bảo điều kiện, thực hiện INSERT hoặc UPDATE
-    IF EXISTS (SELECT 1 FROM deleted) -- UPDATE
-    BEGIN
-        UPDATE ReservationForm
-        SET reservationDate = i.reservationDate,
-            checkInDate = i.checkInDate,
-            checkOutDate = i.checkOutDate,
-            employeeID = i.employeeID,
-            roomID = i.roomID,
-            customerID = i.customerID,
-            roomBookingDeposit = i.roomBookingDeposit,
-            isActivate = i.isActivate
-        FROM inserted i
-        WHERE ReservationForm.reservationFormID = i.reservationFormID;
-    END
-    ELSE --INSERT
-    BEGIN
-        INSERT INTO ReservationForm(
-            reservationFormID, reservationDate, checkInDate, checkOutDate,
-            employeeID, roomID, customerID, roomBookingDeposit, isActivate
-        )
-        SELECT 
-            reservationFormID, reservationDate, checkInDate, checkOutDate,
-            employeeID, roomID, customerID, roomBookingDeposit, isActivate
-        FROM inserted;
-    END
+
+    
+    INSERT INTO ReservationForm(
+        reservationFormID, reservationDate, checkInDate, checkOutDate,
+        employeeID, roomID, customerID, roomBookingDeposit, priceUnit, unitPrice, isActivate
+    )
+    SELECT 
+        reservationFormID, reservationDate, checkInDate, checkOutDate,
+        employeeID, roomID, customerID, roomBookingDeposit, priceUnit, unitPrice, isActivate
+    FROM inserted;
+
 END;
 GO
 
@@ -912,7 +1731,7 @@ BEGIN
         FROM Room 
         WHERE roomID = @roomID;
         
-        IF @roomStatus <> 'AVAILABLE'
+        IF @roomStatus <> 'AVAILABLE' OR @roomStatus <> 'RESERVED'
         BEGIN
             RAISERROR('Phòng không khả dụng để check-in (trạng thái: %s).', 16, 1, @roomStatus);
             ROLLBACK TRANSACTION;
@@ -938,9 +1757,9 @@ BEGIN
             @actualCheckInDate AS CheckInDate,
             @roomID AS RoomID,
             CASE 
-                WHEN @actualCheckInDate > @checkInDate THEN 'Khách hàng check-in muộn'
-                WHEN @actualCheckInDate < @checkInDate THEN 'Khách hàng check-in sớm'
-                ELSE 'Khách hàng check-in đúng giờ'
+                WHEN @actualCheckInDate > @checkInDate THEN N'Khách hàng check-in muộn'
+                WHEN @actualCheckInDate < @checkInDate THEN N'Khách hàng check-in sớm'
+                ELSE N'Khách hàng check-in đúng giờ'
             END AS CheckinStatus;
             
         COMMIT TRANSACTION;
@@ -982,17 +1801,17 @@ GO
 
 -- Tạo procedure trả phòng
 CREATE OR ALTER PROCEDURE sp_CheckoutRoom
-    @reservationFormID NVARCHAR(15),       -- Mã phiếu đặt phòng
-    @historyCheckOutID NVARCHAR(15),       -- Mã phiếu check-out
-    @employeeID NVARCHAR(15),              -- Mã nhân viên thực hiện check-out
-    @invoiceID NVARCHAR(15) = NULL         -- Mã hóa đơn (nếu chưa có sẽ tự động tạo)
+    @reservationFormID NVARCHAR(15),
+    @historyCheckOutID NVARCHAR(15),
+    @employeeID NVARCHAR(15),
+    @invoiceID NVARCHAR(15) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        -- Kiểm tra phiếu đặt phòng có tồn tại không
+        -- BƯỚC 1: Kiểm tra phiếu đặt phòng
         IF NOT EXISTS (SELECT 1 FROM ReservationForm WHERE reservationFormID = @reservationFormID)
         BEGIN
             RAISERROR('Phiếu đặt phòng không tồn tại.', 16, 1);
@@ -1000,7 +1819,6 @@ BEGIN
             RETURN -1;
         END
 
-        -- Kiểm tra phiếu đặt phòng có đang hoạt động không
         IF EXISTS (SELECT 1 FROM ReservationForm WHERE reservationFormID = @reservationFormID AND isActivate = 'DEACTIVATE')
         BEGIN
             RAISERROR('Phiếu đặt phòng đã bị hủy.', 16, 1);
@@ -1008,7 +1826,6 @@ BEGIN
             RETURN -1;
         END
 
-        -- Kiểm tra phòng đã được check-in chưa
         IF NOT EXISTS (SELECT 1 FROM HistoryCheckin WHERE reservationFormID = @reservationFormID)
         BEGIN
             RAISERROR('Phòng chưa được check-in nên không thể trả phòng.', 16, 1);
@@ -1016,7 +1833,6 @@ BEGIN
             RETURN -1;
         END
 
-        -- Kiểm tra phòng đã được check-out chưa
         IF EXISTS (SELECT 1 FROM HistoryCheckOut WHERE reservationFormID = @reservationFormID)
         BEGIN
             RAISERROR('Phòng đã được check-out trước đó.', 16, 1);
@@ -1024,121 +1840,59 @@ BEGIN
             RETURN -1;
         END
 
-        -- Lấy thông tin phòng và giá tiền
+        -- BƯỚC 2: Lấy thông tin cơ bản
         DECLARE @roomID NVARCHAR(15);
-        DECLARE @roomCategoryID NVARCHAR(15);
-        DECLARE @dayPrice DECIMAL(18, 2);
-        DECLARE @hourPrice DECIMAL(18, 2);
-        DECLARE @checkInDate DATETIME;
-        DECLARE @checkOutDate DATETIME;
-        DECLARE @actualCheckOutDate DATETIME = GETDATE(); -- Thời điểm thực hiện check-out
-        DECLARE @roomCharge DECIMAL(18, 2);
-        DECLARE @servicesCharge DECIMAL(18, 2) = 0;
+        DECLARE @checkOutDateExpected DATETIME;
+        DECLARE @checkOutDateActual DATETIME = GETDATE();
 
-        -- Lấy thông tin phòng và lịch đặt
         SELECT 
             @roomID = rf.roomID,
-            @roomCategoryID = r.roomCategoryID,
-            @checkInDate = rf.checkInDate,
-            @checkOutDate = rf.checkOutDate
-        FROM 
-            ReservationForm rf
-            JOIN Room r ON rf.roomID = r.roomID
-        WHERE 
-            rf.reservationFormID = @reservationFormID;
+            @checkOutDateExpected = rf.checkOutDate
+        FROM ReservationForm rf
+        WHERE rf.reservationFormID = @reservationFormID;
 
-        -- Lấy giá theo ngày và giờ
-        SELECT @dayPrice = p.price 
-        FROM Pricing p 
-        WHERE p.roomCategoryID = @roomCategoryID AND p.priceUnit = 'DAY';
-        
-        SELECT @hourPrice = p.price 
-        FROM Pricing p 
-        WHERE p.roomCategoryID = @roomCategoryID AND p.priceUnit = 'HOUR';
-
-        -- Tính tổng phí dịch vụ
-        SELECT @servicesCharge = ISNULL(SUM(totalPrice), 0)
-        FROM RoomUsageService
-        WHERE reservationFormID = @reservationFormID;
-
-        -- Tính phí phòng dựa trên thời gian thực tế sử dụng
-        DECLARE @checkInDateActual DATETIME;
-        
-        SELECT @checkInDateActual = checkInDate 
-        FROM HistoryCheckin 
-        WHERE reservationFormID = @reservationFormID;
-
-        -- Tính số ngày sử dụng (làm tròn lên)
-        DECLARE @daysUsed INT = CEILING(DATEDIFF(HOUR, @checkInDateActual, @actualCheckOutDate) / 24.0);
-        
-        -- Tính phí phòng
-        SET @roomCharge = @daysUsed * @dayPrice;
-        
-        -- Thêm phí trả phòng muộn nếu cần
-        IF @actualCheckOutDate > @checkOutDate
-        BEGIN
-            DECLARE @hoursLate INT = DATEDIFF(HOUR, @checkOutDate, @actualCheckOutDate);
-            
-            -- Nếu trễ dưới 2 giờ, tính theo giờ
-            IF @hoursLate <= 2
-            BEGIN
-                SET @roomCharge = @roomCharge + (@hourPrice * @hoursLate);
-            END
-            -- Nếu trễ trên 2 giờ nhưng dưới 6 giờ, tính 1/2 ngày
-            ELSE IF @hoursLate <= 6
-            BEGIN
-                SET @roomCharge = @roomCharge + (@dayPrice / 2);
-            END
-            -- Nếu trễ trên 6 giờ, tính 1 ngày
-            ELSE
-            BEGIN
-                SET @roomCharge = @roomCharge + @dayPrice;
-            END
-        END
-
-        -- Thêm bản ghi check-out
+        -- BƯỚC 3: Thêm bản ghi check-out
         INSERT INTO HistoryCheckOut (historyCheckOutID, checkOutDate, reservationFormID, employeeID)
-        VALUES (@historyCheckOutID, @actualCheckOutDate, @reservationFormID, @employeeID);
+        VALUES (@historyCheckOutID, @checkOutDateActual, @reservationFormID, @employeeID);
 
-        -- Kiểm tra xem đã có hóa đơn chưa
+        -- BƯỚC 4: Tạo/Cập nhật Invoice (TRIGGER SẼ TỰ ĐỘNG TÍNH PHÍ)
         IF EXISTS (SELECT 1 FROM Invoice WHERE reservationFormID = @reservationFormID)
         BEGIN
-            -- Cập nhật hóa đơn hiện có
+            -- Cập nhật Invoice → Trigger TR_Invoice_ManageUpdate sẽ tính lại phí
             UPDATE Invoice
-            SET 
-                roomCharge = @roomCharge,
-                servicesCharge = @servicesCharge,
-                invoiceDate = @actualCheckOutDate
-            WHERE 
-                reservationFormID = @reservationFormID;
+            SET invoiceDate = @checkOutDateActual
+            WHERE reservationFormID = @reservationFormID;
         END
         ELSE
         BEGIN
-            -- Tạo hóa đơn mới nếu không có hóa đơn
-            DECLARE @newInvoiceID NVARCHAR(15);
+            -- Tạo Invoice mới → Trigger TR_Invoice_ManageInsert sẽ tính phí
+            DECLARE @newInvoiceID NVARCHAR(15) = ISNULL(@invoiceID, dbo.fn_GenerateID('INV-', 'Invoice', 'invoiceID', 6));
             
-            -- Sử dụng invoiceID được cung cấp hoặc tạo mã mới
-            SET @newInvoiceID = ISNULL(@invoiceID, dbo.fn_GenerateID('INV-', 'Invoice', 'invoiceID', 6));
-            
-            INSERT INTO Invoice (invoiceID, invoiceDate, roomCharge, servicesCharge, reservationFormID)
-            VALUES (@newInvoiceID, @actualCheckOutDate, @roomCharge, @servicesCharge, @reservationFormID);
+            INSERT INTO Invoice (invoiceID, invoiceDate, roomCharge, servicesCharge, roomBookingDeposit, reservationFormID)
+            VALUES (@newInvoiceID, @checkOutDateActual, 0, 0, 0, @reservationFormID);
+            -- Lưu ý: roomCharge, servicesCharge sẽ được trigger tính lại
         END
 
-        -- Trạng thái phòng sẽ tự động cập nhật thành AVAILABLE nhờ trigger TR_UpdateRoomStatus_OnCheckOut
-
-        -- Trả về kết quả thành công
+        -- BƯỚC 5: Trả về kết quả (SAU KHI TRIGGER ĐÃ TÍNH PHÍ)
         SELECT 
+            i.invoiceID,
             @reservationFormID AS ReservationFormID,
             @historyCheckOutID AS HistoryCheckOutID,
-            @actualCheckOutDate AS CheckOutDate,
-            @roomCharge AS RoomCharge,
-            @servicesCharge AS ServicesCharge,
-            (@roomCharge + @servicesCharge) AS TotalDue,
-            ((@roomCharge + @servicesCharge) * 1.1) AS NetDue,
+            @checkOutDateActual AS CheckOutDate,
+            @roomID AS RoomID,
+            i.roomCharge AS RoomCharge,
+            i.servicesCharge AS ServicesCharge,
+            i.totalDue AS TotalDue,
+            i.netDue AS NetDue,
+            i.totalAmount AS TotalAmount,
+            i.roomBookingDeposit AS Deposit,
             CASE 
-                WHEN @actualCheckOutDate > @checkOutDate THEN 'Khách hàng trả phòng muộn'
-                ELSE 'Khách hàng trả phòng đúng hạn'
-            END AS CheckoutStatus;
+                WHEN @checkOutDateActual > @checkOutDateExpected THEN N'Khách hàng trả phòng muộn'
+                WHEN @checkOutDateActual < @checkOutDateExpected THEN N'Khách hàng trả phòng sớm'
+                ELSE N'Khách hàng trả phòng đúng hạn'
+            END AS CheckoutStatus
+        FROM Invoice i
+        WHERE i.reservationFormID = @reservationFormID;
 
         COMMIT TRANSACTION;
         RETURN 0;
@@ -1147,19 +1901,15 @@ BEGIN
         IF @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
             
-        -- Hiển thị thông tin lỗi
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
-        DECLARE @ErrorState INT = ERROR_STATE();
-        
-        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+        RAISERROR(@ErrorMessage, 16, 1);
         RETURN -1;
     END CATCH
 END;
 GO
 
 ---------------------------------------
--- TẠO RPOCEDURE CHECKOUT nhanh hơn
+-- TẠO RPOCEDURE CHECKOUT 
 ---------------------------------------
 CREATE OR ALTER PROCEDURE sp_QuickCheckout
     @reservationFormID NVARCHAR(15),
@@ -1174,6 +1924,238 @@ BEGIN
         @reservationFormID = @reservationFormID,
         @historyCheckOutID = @historyCheckOutID,
         @employeeID = @employeeID;
+END;
+GO
+
+-- ================================================================
+-- Stored Procedure: sp_AddRoomService
+-- Mục đích: Thêm dịch vụ vào phòng (bypass trigger conflict với EF Core)
+--          Nâng cấp: Kiểm tra dịch vụ đã tồn tại → UPDATE quantity thay vì INSERT mới
+-- Tham số:
+--   @reservationFormID: Mã phiếu đặt phòng
+--   @hotelServiceId: Mã dịch vụ khách sạn
+--   @quantity: Số lượng dịch vụ (sẽ được CỘNG THÊM nếu dịch vụ đã tồn tại)
+--   @employeeID: Mã nhân viên thêm dịch vụ
+-- Trả về: SELECT thông tin dịch vụ vừa thêm/cập nhật
+-- ================================================================
+CREATE OR ALTER PROCEDURE sp_AddRoomService
+    @reservationFormID NVARCHAR(15),
+    @hotelServiceId NVARCHAR(15),
+    @quantity INT,
+    @employeeID NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Kiểm tra phiếu đặt phòng tồn tại và đang hoạt động
+        IF NOT EXISTS (SELECT 1 FROM ReservationForm 
+                      WHERE reservationFormID = @reservationFormID 
+                      AND isActivate = 'ACTIVATE')
+        BEGIN
+            RAISERROR(N'Phiếu đặt phòng không tồn tại hoặc đã bị hủy.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+        
+        -- Kiểm tra đã check-out chưa
+        IF EXISTS (SELECT 1 FROM HistoryCheckOut WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Không thể thêm dịch vụ cho phòng đã check-out.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+        
+        -- Kiểm tra dịch vụ tồn tại
+        DECLARE @unitPrice MONEY;
+        SELECT @unitPrice = servicePrice 
+        FROM HotelService 
+        WHERE hotelServiceId = @hotelServiceId AND isActivate = 'ACTIVATE';
+        
+        IF @unitPrice IS NULL
+        BEGIN
+            RAISERROR(N'Dịch vụ không tồn tại hoặc đã bị vô hiệu hóa.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+        
+        -- ===== KIỂM TRA DỊCH VỤ ĐÃ TỒN TẠI CHƯA =====
+        DECLARE @existingRoomUsageServiceId NVARCHAR(15);
+        DECLARE @existingQuantity INT;
+        
+        SELECT 
+            @existingRoomUsageServiceId = roomUsageServiceId,
+            @existingQuantity = quantity
+        FROM RoomUsageService
+        WHERE reservationFormID = @reservationFormID 
+          AND hotelServiceId = @hotelServiceId;
+        
+        IF @existingRoomUsageServiceId IS NOT NULL
+        BEGIN
+            -- ===== DỊCH VỤ ĐÃ TỒN TẠI → UPDATE QUANTITY =====
+            UPDATE RoomUsageService
+            SET quantity = quantity + @quantity,  -- Cộng thêm số lượng mới
+                dateAdded = GETDATE(),           -- Cập nhật thời gian
+                employeeID = @employeeID         -- Cập nhật nhân viên
+            WHERE roomUsageServiceId = @existingRoomUsageServiceId;
+            
+            COMMIT TRANSACTION;
+            
+            -- Trả về thông tin dịch vụ đã cập nhật
+            SELECT 
+                rus.roomUsageServiceId AS RoomUsageServiceId,
+                rus.quantity AS Quantity,
+                rus.unitPrice AS UnitPrice,
+                rus.dateAdded AS DateAdded,
+                rus.hotelServiceId AS HotelServiceId,
+                hs.serviceName AS ServiceName,
+                rus.reservationFormID AS ReservationFormID,
+                rus.employeeID AS EmployeeID,
+                (rus.quantity * rus.unitPrice) AS TotalPrice,
+                'UPDATED' AS Action,
+                @quantity AS QuantityAdded,
+                @existingQuantity AS PreviousQuantity
+            FROM RoomUsageService rus
+            JOIN HotelService hs ON rus.hotelServiceId = hs.hotelServiceId
+            WHERE rus.roomUsageServiceId = @existingRoomUsageServiceId;
+        END
+        ELSE
+        BEGIN
+            -- ===== DỊCH VỤ CHƯA TỒN TẠI → INSERT MỚI =====
+            DECLARE @roomUsageServiceId NVARCHAR(15) = dbo.fn_GenerateID('RUS-', 'RoomUsageService', 'roomUsageServiceId', 6);
+            
+            INSERT INTO RoomUsageService (
+                roomUsageServiceId, 
+                quantity, 
+                unitPrice, 
+                dateAdded,
+                hotelServiceId, 
+                reservationFormID, 
+                employeeID
+            )
+            VALUES (
+                @roomUsageServiceId,
+                @quantity,
+                @unitPrice,
+                GETDATE(),
+                @hotelServiceId,
+                @reservationFormID,
+                @employeeID
+            );
+            
+            COMMIT TRANSACTION;
+            
+            -- Trả về thông tin dịch vụ vừa thêm
+            SELECT 
+                rus.roomUsageServiceId AS RoomUsageServiceId,
+                rus.quantity AS Quantity,
+                rus.unitPrice AS UnitPrice,
+                rus.dateAdded AS DateAdded,
+                rus.hotelServiceId AS HotelServiceId,
+                hs.serviceName AS ServiceName,
+                rus.reservationFormID AS ReservationFormID,
+                rus.employeeID AS EmployeeID,
+                (rus.quantity * rus.unitPrice) AS TotalPrice,
+                'INSERTED' AS Action,
+                @quantity AS QuantityAdded,
+                0 AS PreviousQuantity
+            FROM RoomUsageService rus
+            JOIN HotelService hs ON rus.hotelServiceId = hs.hotelServiceId
+            WHERE rus.roomUsageServiceId = @roomUsageServiceId;
+        END
+        
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+    END CATCH
+END;
+GO
+
+-- ================================================================
+-- Stored Procedure: sp_DeleteRoomService
+-- Mục đích: Xóa dịch vụ khỏi phòng (cho phép xóa từng dịch vụ đã thêm)
+-- Tham số:
+--   @roomUsageServiceId: Mã sử dụng dịch vụ cần xóa
+-- Trả về: Thông tin dịch vụ đã xóa
+-- ================================================================
+CREATE OR ALTER PROCEDURE sp_DeleteRoomService
+    @roomUsageServiceId NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Kiểm tra dịch vụ tồn tại
+        IF NOT EXISTS (SELECT 1 FROM RoomUsageService WHERE roomUsageServiceId = @roomUsageServiceId)
+        BEGIN
+            RAISERROR(N'Dịch vụ không tồn tại.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+        
+        -- Lấy thông tin trước khi xóa
+        DECLARE @reservationFormID NVARCHAR(15);
+        SELECT @reservationFormID = reservationFormID 
+        FROM RoomUsageService 
+        WHERE roomUsageServiceId = @roomUsageServiceId;
+        
+        -- Kiểm tra đã check-out chưa
+        IF EXISTS (SELECT 1 FROM HistoryCheckOut WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Không thể xóa dịch vụ cho phòng đã check-out.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+        
+        -- Lưu thông tin để trả về
+        DECLARE @DeletedServiceInfo TABLE (
+            RoomUsageServiceId NVARCHAR(15),
+            ServiceName NVARCHAR(200),
+            Quantity INT,
+            UnitPrice MONEY,
+            TotalPrice MONEY,
+            ReservationFormID NVARCHAR(15),
+            DateAdded DATETIME
+        );
+        
+        INSERT INTO @DeletedServiceInfo
+        SELECT 
+            rus.roomUsageServiceId,
+            hs.serviceName,
+            rus.quantity,
+            rus.unitPrice,
+            (rus.quantity * rus.unitPrice),
+            rus.reservationFormID,
+            rus.dateAdded
+        FROM RoomUsageService rus
+        JOIN HotelService hs ON rus.hotelServiceId = hs.hotelServiceId
+        WHERE rus.roomUsageServiceId = @roomUsageServiceId;
+        
+        -- Xóa dịch vụ
+        DELETE FROM RoomUsageService
+        WHERE roomUsageServiceId = @roomUsageServiceId;
+        
+        COMMIT TRANSACTION;
+        
+        -- Trả về thông tin dịch vụ đã xóa
+        SELECT * FROM @DeletedServiceInfo;
+        
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+    END CATCH
 END;
 GO
 
@@ -1430,7 +2412,349 @@ EXEC sp_CheckoutRoom
     @historyCheckOutID = 'HCO-000010',
     @employeeID = 'EMP-000001',
     @invoiceID = 'INV-000010';
+
+GO
 ----------------------------------------------------------------------------------
+
+--=======================================================================
+-- STORED PROCEDURES MỚI CHO LUỒNG THANH TOÁN
+--=======================================================================
+
+-------------------------------------
+-- SP 1: TRẢ PHÒNG RỒI THANH TOÁN (Checkout Then Pay)
+-------------------------------------
+CREATE OR ALTER PROCEDURE sp_CreateInvoice_CheckoutThenPay
+    @reservationFormID NVARCHAR(15),
+    @employeeID NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Kiểm tra đã check-in chưa
+        IF NOT EXISTS (SELECT 1 FROM HistoryCheckin WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Phiếu đặt phòng chưa check-in', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đã checkout chưa
+        IF EXISTS (SELECT 1 FROM HistoryCheckOut WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Phiếu đặt phòng đã checkout', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đã có invoice chưa
+        IF EXISTS (SELECT 1 FROM Invoice WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Hóa đơn đã tồn tại', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Lấy thông tin
+        DECLARE @roomID NVARCHAR(15);
+        SELECT @roomID = roomID FROM ReservationForm WHERE reservationFormID = @reservationFormID;
+        
+        -- Tạo HistoryCheckOut với thời gian HIỆN TẠI
+        DECLARE @checkOutID NVARCHAR(15) = dbo.fn_GenerateID('HCO-', 'HistoryCheckOut', 'historyCheckOutID', 6);
+        
+        INSERT INTO HistoryCheckOut (historyCheckOutID, checkOutDate, reservationFormID, employeeID)
+        VALUES (@checkOutID, GETDATE(), @reservationFormID, @employeeID);
+        
+        -- Tạo Invoice (Trigger sẽ tự động tính toán dựa trên checkOutActual)
+        DECLARE @invoiceID NVARCHAR(15) = dbo.fn_GenerateID('INV-', 'Invoice', 'invoiceID', 6);
+        
+        INSERT INTO Invoice (
+            invoiceID, invoiceDate, roomCharge, servicesCharge, reservationFormID, 
+            isPaid, checkoutType
+        )
+        VALUES (
+            @invoiceID, GETDATE(), 0, 0, @reservationFormID, 
+            0, 'CHECKOUT_THEN_PAY'
+        );
+        
+        -- Cập nhật invoiceID vào HistoryCheckOut
+        UPDATE HistoryCheckOut SET invoiceID = @invoiceID WHERE historyCheckOutID = @checkOutID;
+        
+        -- Cập nhật trạng thái phòng thành UNAVAILABLE (đợi thanh toán)
+        UPDATE Room SET roomStatus = 'UNAVAILABLE' WHERE roomID = @roomID;
+        
+        -- Trả về thông tin invoice
+        SELECT 
+            inv.invoiceID,
+            inv.roomCharge,
+            inv.servicesCharge,
+            inv.totalAmount,
+            inv.isPaid,
+            inv.checkoutType,
+            @checkOutID AS checkOutID,
+            'CHECKOUT_THEN_PAY' AS status
+        FROM Invoice inv
+        WHERE inv.invoiceID = @invoiceID;
+        
+        COMMIT TRANSACTION;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN -1;
+    END CATCH
+END;
+GO
+
+-------------------------------------
+-- SP 2: THANH TOÁN TRƯỚC (Pay Then Checkout)
+-------------------------------------
+CREATE OR ALTER PROCEDURE sp_CreateInvoice_PayThenCheckout
+    @reservationFormID NVARCHAR(15),
+    @employeeID NVARCHAR(15),
+    @paymentMethod NVARCHAR(20) = 'CASH'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Kiểm tra đã check-in chưa
+        IF NOT EXISTS (SELECT 1 FROM HistoryCheckin WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Phiếu đặt phòng chưa check-in', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đã có invoice chưa
+        IF EXISTS (SELECT 1 FROM Invoice WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Hóa đơn đã tồn tại', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Tạo Invoice với checkOutDate = Expected (chưa checkout thực tế)
+        -- Trigger sẽ tính dựa trên checkInActual -> checkOutExpected
+        DECLARE @invoiceID NVARCHAR(15) = dbo.fn_GenerateID('INV-', 'Invoice', 'invoiceID', 6);
+        
+        INSERT INTO Invoice (
+            invoiceID, invoiceDate, roomCharge, servicesCharge, 
+            reservationFormID, isPaid, paymentDate, paymentMethod, checkoutType
+        )
+        VALUES (
+            @invoiceID, GETDATE(), 0, 0, 
+            @reservationFormID, 1, GETDATE(), @paymentMethod, 'PAY_THEN_CHECKOUT'
+        );
+        
+        -- Phòng vẫn ON_USE, khách tiếp tục ở
+        
+        -- Trả về thông tin invoice
+        SELECT 
+            inv.invoiceID,
+            inv.roomCharge,
+            inv.servicesCharge,
+            inv.totalAmount,
+            inv.isPaid,
+            inv.paymentDate,
+            inv.paymentMethod,
+            inv.checkoutType,
+            'PAY_THEN_CHECKOUT' AS status
+        FROM Invoice inv
+        WHERE inv.invoiceID = @invoiceID;
+        
+        COMMIT TRANSACTION;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN -1;
+    END CATCH
+END;
+GO
+
+-------------------------------------
+-- SP 3: XÁC NHẬN THANH TOÁN (cho Checkout Then Pay)
+-------------------------------------
+CREATE OR ALTER PROCEDURE sp_ConfirmPayment
+    @invoiceID NVARCHAR(15),
+    @paymentMethod NVARCHAR(20) = 'CASH',
+    @employeeID NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Kiểm tra invoice tồn tại
+        IF NOT EXISTS (SELECT 1 FROM Invoice WHERE invoiceID = @invoiceID)
+        BEGIN
+            RAISERROR(N'Không tìm thấy hóa đơn', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đã thanh toán chưa
+        DECLARE @isPaid BIT;
+        SELECT @isPaid = isPaid FROM Invoice WHERE invoiceID = @invoiceID;
+        
+        IF @isPaid = 1
+        BEGIN
+            RAISERROR(N'Hóa đơn đã được thanh toán', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Cập nhật trạng thái thanh toán
+        UPDATE Invoice
+        SET isPaid = 1,
+            paymentDate = GETDATE(),
+            paymentMethod = @paymentMethod
+        WHERE invoiceID = @invoiceID;
+        
+        -- Lấy roomID để giải phóng phòng
+        DECLARE @roomID NVARCHAR(15);
+        SELECT @roomID = rf.roomID
+        FROM Invoice inv
+        JOIN ReservationForm rf ON inv.reservationFormID = rf.reservationFormID
+        WHERE inv.invoiceID = @invoiceID;
+        
+        -- Giải phóng phòng
+        UPDATE Room SET roomStatus = 'AVAILABLE' WHERE roomID = @roomID;
+        
+        -- Trả về thông tin (sử dụng biến để đảm bảo giá trị đúng)
+        DECLARE @currentDate DATETIME = GETDATE();
+        DECLARE @totalAmt DECIMAL(18,2);
+        
+        SELECT @totalAmt = totalAmount FROM Invoice WHERE invoiceID = @invoiceID;
+        
+        SELECT 
+            @invoiceID AS invoiceID,
+            CAST(1 AS BIT) AS isPaid,
+            @currentDate AS paymentDate,
+            @paymentMethod AS paymentMethod,
+            @totalAmt AS totalAmount,
+            'PAYMENT_CONFIRMED' AS status;
+        
+        COMMIT TRANSACTION;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN -1;
+    END CATCH
+END;
+GO
+
+-------------------------------------
+-- SP 4: CHECKOUT THỰC TẾ SAU KHI ĐÃ THANH TOÁN TRƯỚC
+-------------------------------------
+CREATE OR ALTER PROCEDURE sp_ActualCheckout_AfterPrepayment
+    @reservationFormID NVARCHAR(15),
+    @employeeID NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Kiểm tra đã thanh toán chưa
+        DECLARE @invoiceID NVARCHAR(15);
+        DECLARE @isPaid BIT;
+        
+        SELECT @invoiceID = invoiceID, @isPaid = isPaid
+        FROM Invoice
+        WHERE reservationFormID = @reservationFormID;
+        
+        IF @invoiceID IS NULL OR @isPaid = 0
+        BEGIN
+            RAISERROR(N'Phải thanh toán trước khi checkout', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đã checkout chưa
+        IF EXISTS (SELECT 1 FROM HistoryCheckOut WHERE reservationFormID = @reservationFormID)
+        BEGIN
+            RAISERROR(N'Đã checkout rồi', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Lấy thông tin
+        DECLARE @roomID NVARCHAR(15);
+        DECLARE @checkOutExpected DATETIME;
+        DECLARE @checkOutActual DATETIME = GETDATE();
+        
+        SELECT 
+            @roomID = rf.roomID,
+            @checkOutExpected = rf.checkOutDate
+        FROM ReservationForm rf
+        WHERE rf.reservationFormID = @reservationFormID;
+        
+        -- Tạo HistoryCheckOut
+        DECLARE @checkOutID NVARCHAR(15) = dbo.fn_GenerateID('HCO-', 'HistoryCheckOut', 'historyCheckOutID', 6);
+        
+        INSERT INTO HistoryCheckOut (historyCheckOutID, checkOutDate, reservationFormID, employeeID, invoiceID)
+        VALUES (@checkOutID, @checkOutActual, @reservationFormID, @employeeID, @invoiceID);
+        
+        -- Kiểm tra checkout muộn
+        DECLARE @additionalCharge DECIMAL(18,2) = 0;
+        DECLARE @checkoutStatus NVARCHAR(20) = 'ON_TIME';
+        
+        IF @checkOutActual > @checkOutExpected
+        BEGIN
+            SET @checkoutStatus = 'LATE_CHECKOUT';
+            
+            -- Trigger TR_Invoice_ManageUpdate sẽ tự động tính lại lateCheckoutFee
+            UPDATE Invoice 
+            SET invoiceDate = GETDATE()  -- Force trigger update
+            WHERE invoiceID = @invoiceID;
+            
+            SELECT @additionalCharge = ISNULL(lateCheckoutFee, 0)
+            FROM Invoice
+            WHERE invoiceID = @invoiceID;
+        END
+        
+        -- Giải phóng phòng
+        UPDATE Room SET roomStatus = 'AVAILABLE' WHERE roomID = @roomID;
+        
+        -- Trả về thông tin
+        SELECT 
+            @checkOutID AS checkOutID,
+            @checkOutActual AS checkOutDate,
+            @checkOutExpected AS checkOutExpected,
+            @additionalCharge AS additionalCharge,
+            @checkoutStatus AS checkoutStatus,
+            @invoiceID AS invoiceID;
+        
+        COMMIT TRANSACTION;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN -1;
+    END CATCH
+END;
+GO
 
 --=======================================================================
 -- CÁC CÂU TRUY VẤN SQL

@@ -1,0 +1,188 @@
+@model HotelManagement.Models.HotelService
+
+@{
+    ViewData["Title"] = "Thêm dịch vụ mới";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-plus-circle"></i>
+        Thêm dịch vụ mới
+    </h1>
+    <p>Tạo dịch vụ mới cho khách sạn</p>
+</div>
+
+<!-- Form Card -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-edit me-2"></i>Thông tin Dịch vụ
+    </div>
+    <div class="card-body-modern">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="ServiceName" class="form-label required">
+                        <i class="fas fa-concierge-bell"></i> Tên dịch vụ
+                    </label>
+                    <input asp-for="ServiceName" class="form-control" placeholder="VD: Spa, Massage, Buffet..." />
+                    <span asp-validation-for="ServiceName" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ServiceCategoryID" class="form-label required">
+                        <i class="fas fa-tag"></i> Danh mục dịch vụ
+                    </label>
+                    <div class="input-group">
+                        <select asp-for="ServiceCategoryID" id="serviceCategorySelect" class="form-select" asp-items="ViewBag.ServiceCategoryID">
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCategoryModal" title="Thêm danh mục mới">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="ServiceCategoryID" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ServicePrice" class="form-label required">
+                        <i class="fas fa-money-bill"></i> Giá dịch vụ (VNĐ)
+                    </label>
+                    <input asp-for="ServicePrice" type="number" min="0" step="1000" class="form-control" 
+                           placeholder="VD: 500000" />
+                    <span asp-validation-for="ServicePrice" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-12">
+                    <label asp-for="Description" class="form-label">
+                        <i class="fas fa-align-left"></i> Mô tả dịch vụ
+                    </label>
+                    <textarea asp-for="Description" class="form-control" rows="4" 
+                              placeholder="Mô tả chi tiết về dịch vụ..."></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary-modern">
+                    <i class="fas fa-save"></i> Lưu dịch vụ
+                </button>
+                <a asp-action="Index" class="btn btn-secondary-modern">
+                    <i class="fas fa-times"></i> Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Thêm danh mục dịch vụ mới -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addCategoryModalLabel">
+                    <i class="fas fa-plus-circle"></i> Thêm danh mục dịch vụ mới
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="newCategoryName" class="form-label">
+                        <i class="fas fa-tag"></i> Tên danh mục
+                    </label>
+                    <input type="text" id="newCategoryName" class="form-control" 
+                           placeholder="VD: Giải trí, Ăn uống, Spa..." />
+                    <small class="text-muted">Tên danh mục không được trùng</small>
+                </div>
+                <div id="categoryError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Hủy
+                </button>
+                <button type="button" class="btn btn-success" id="saveCategoryBtn">
+                    <i class="fas fa-save"></i> Lưu danh mục
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+            // Xử lý lưu danh mục mới
+            $('#saveCategoryBtn').click(function() {
+                const categoryName = $('#newCategoryName').val().trim();
+                
+                if (!categoryName) {
+                    showError('Vui lòng nhập tên danh mục!');
+                    return;
+                }
+                
+                // Disable button để tránh submit nhiều lần
+                $('#saveCategoryBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Đang lưu...');
+                
+                // AJAX call để thêm ServiceCategory
+                $.ajax({
+                    url: '/HotelService/CreateCategory',
+                    type: 'POST',
+                    data: {
+                        categoryName: categoryName,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Thêm option mới vào dropdown
+                            const newOption = `<option value="${response.categoryId}" selected>${response.categoryName}</option>`;
+                            $('#serviceCategorySelect').append(newOption);
+                            
+                            // Đóng modal và reset form
+                            $('#addCategoryModal').modal('hide');
+                            $('#newCategoryName').val('');
+                            hideError();
+                            
+                            // Hiển thị toast thông báo
+                            alert(`✅ Thêm danh mục "${response.categoryName}" thành công!`);
+                        } else {
+                            showError(response.message || 'Có lỗi xảy ra!');
+                        }
+                    },
+                    error: function(xhr) {
+                        showError('Lỗi kết nối! Vui lòng thử lại.');
+                    },
+                    complete: function() {
+                        $('#saveCategoryBtn').prop('disabled', false).html('<i class="fas fa-save"></i> Lưu danh mục');
+                    }
+                });
+            });
+            
+            // Helper functions
+            function showError(message) {
+                $('#categoryError').text(message).removeClass('d-none');
+            }
+            
+            function hideError() {
+                $('#categoryError').addClass('d-none');
+            }
+            
+            // Reset modal khi đóng
+            $('#addCategoryModal').on('hidden.bs.modal', function() {
+                $('#newCategoryName').val('');
+                hideError();
+            });
+            
+            // Enter key để submit
+            $('#newCategoryName').keypress(function(e) {
+                if (e.which == 13) {
+                    $('#saveCategoryBtn').click();
+                    return false;
+                }
+            });
+        });
+    </script>
+}

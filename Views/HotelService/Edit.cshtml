@@ -1,0 +1,90 @@
+@model HotelManagement.Models.HotelService
+
+@{
+    ViewData["Title"] = "Chỉnh sửa dịch vụ";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1>
+        <i class="fas fa-edit"></i>
+        Chỉnh sửa dịch vụ: @Model.ServiceName
+    </h1>
+    <p>Cập nhật thông tin dịch vụ #@Model.HotelServiceId</p>
+</div>
+
+<!-- Form Card -->
+<div class="card-modern fade-in-up">
+    <div class="card-header-modern">
+        <i class="fas fa-edit me-2"></i>Thông tin Dịch vụ
+    </div>
+    <div class="card-body-modern">
+        <form asp-action="Edit" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            
+            <input type="hidden" asp-for="HotelServiceId" />
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="ServiceName" class="form-label required">
+                        <i class="fas fa-concierge-bell"></i> Tên dịch vụ
+                    </label>
+                    <input asp-for="ServiceName" class="form-control" />
+                    <span asp-validation-for="ServiceName" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ServiceCategoryID" class="form-label required">
+                        <i class="fas fa-tag"></i> Danh mục dịch vụ
+                    </label>
+                    <select asp-for="ServiceCategoryID" class="form-select" asp-items="ViewBag.ServiceCategoryID">
+                    </select>
+                    <span asp-validation-for="ServiceCategoryID" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ServicePrice" class="form-label required">
+                        <i class="fas fa-money-bill"></i> Giá dịch vụ (VNĐ)
+                    </label>
+                    <input asp-for="ServicePrice" type="number" min="0" step="1000" class="form-control" />
+                    <span asp-validation-for="ServicePrice" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="IsActivate" class="form-label required">
+                        <i class="fas fa-toggle-on"></i> Trạng thái
+                    </label>
+                    <select asp-for="IsActivate" class="form-select">
+                        <option value="ACTIVATE">Hoạt động</option>
+                        <option value="DEACTIVATE">Vô hiệu hóa</option>
+                    </select>
+                    <span asp-validation-for="IsActivate" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-12">
+                    <label asp-for="Description" class="form-label">
+                        <i class="fas fa-align-left"></i> Mô tả dịch vụ
+                    </label>
+                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary-modern">
+                    <i class="fas fa-save"></i> Lưu thay đổi
+                </button>
+                <a asp-action="Index" class="btn btn-secondary-modern">
+                    <i class="fas fa-times"></i> Hủy
+                </a>
+                <a asp-action="Details" asp-route-id="@Model.HotelServiceId" class="btn btn-info-modern">
+                    <i class="fas fa-eye"></i> Xem chi tiết
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -42,6 +42,7 @@ namespace HotelManagement.Controllers
                 .OrderByDescending(r => r.DateAdded)
                 .ToListAsync();
 
+            ViewBag.ReservationFormID = reservationFormID;
             ViewBag.ReservationForm = reservation;
             ViewBag.ServiceCategories = await _context.ServiceCategories
                 .Where(sc => sc.IsActivate == "ACTIVATE")
@@ -54,103 +55,111 @@ namespace HotelManagement.Controllers
             return View(services);
         }
 
-        public async Task<IActionResult> Create(string reservationFormID)
-        {
-            if (!CheckAuth()) return RedirectToAction("Login", "Auth");
-            
-            var reservation = await _context.ReservationForms
-                .Include(r => r.Customer)
-                .Include(r => r.Room)
-                .FirstOrDefaultAsync(r => r.ReservationFormID == reservationFormID);
-
-            if (reservation == null)
-            {
-                return NotFound();
-            }
-
-            // Kiểm tra đã check-in chưa
-            var checkedIn = await _context.HistoryCheckins
-                .AnyAsync(h => h.ReservationFormID == reservationFormID);
-
-            if (!checkedIn)
-            {
-                TempData["Error"] = "Chỉ có thể thêm dịch vụ cho phòng đã check-in!";
-                return RedirectToAction("Index", "Reservation");
-            }
-
-            // Kiểm tra đã check-out chưa
-            var checkedOut = await _context.HistoryCheckOuts
-                .AnyAsync(h => h.ReservationFormID == reservationFormID);
-
-            if (checkedOut)
-            {
-                TempData["Error"] = "Không thể thêm dịch vụ cho phòng đã check-out!";
-                return RedirectToAction("Index", "Reservation");
-            }
-
-            ViewBag.ReservationForm = reservation;
-            ViewData["HotelServiceId"] = new SelectList(
-                await _context.HotelServices.Where(s => s.IsActivate == "ACTIVATE").ToListAsync(), 
-                "HotelServiceId", "ServiceName");
-
-            return View();
-        }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [ActionName("AddService")]
-        public async Task<IActionResult> Create(string reservationFormID, [Bind("HotelServiceId,Quantity")] RoomUsageService roomService)
+        public async Task<IActionResult> AddService(string reservationFormID, string hotelServiceId, int quantity)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
-            if (ModelState.IsValid)
+            if (string.IsNullOrEmpty(hotelServiceId) || quantity <= 0)
             {
-                // Lấy giá dịch vụ từ database
-                var service = await _context.HotelServices.FindAsync(roomService.HotelServiceId);
-                if (service == null)
-                {
-                    TempData["Error"] = "Dịch vụ không tồn tại!";
-                    return RedirectToAction(nameof(Index), new { reservationFormID });
-                }
-
-                // Sử dụng fn_GenerateID từ database
-                roomService.RoomUsageServiceId = await _context.GenerateID("RUS-", "RoomUsageService");
-                roomService.ReservationFormID = reservationFormID;
-                roomService.DateAdded = DateTime.Now;
-                roomService.UnitPrice = service.ServicePrice;
-                roomService.EmployeeID = HttpContext.Session.GetString("EmployeeID");
-
-                _context.Add(roomService);
-                await _context.SaveChangesAsync();
-                TempData["Success"] = "Thêm dịch vụ thành công!";
+                TempData["Error"] = "Vui lòng chọn dịch vụ và nhập số lượng hợp lệ!";
                 return RedirectToAction(nameof(Index), new { reservationFormID });
             }
 
-            var reservation = await _context.ReservationForms
-                .Include(r => r.Customer)
-                .Include(r => r.Room)
-                .FirstOrDefaultAsync(r => r.ReservationFormID == reservationFormID);
+            try
+            {
+                var employeeID = HttpContext.Session.GetString("EmployeeID");
+                
+                // Gọi stored procedure để thêm dịch vụ (bypass trigger conflict)
+                var result = await _context.AddRoomServiceSP(
+                    reservationFormID,
+                    hotelServiceId,
+                    quantity,
+                    employeeID!
+                );
 
-            ViewBag.ReservationForm = reservation;
-            ViewData["HotelServiceId"] = new SelectList(
-                await _context.HotelServices.Where(s => s.IsActivate == "ACTIVATE").ToListAsync(), 
-                "HotelServiceId", "ServiceName", roomService.HotelServiceId);
+                if (result != null)
+                {
+                    // Hiển thị thông báo dựa trên action (INSERTED/UPDATED)
+                    if (result.Action == "UPDATED")
+                    {
+                        TempData["Success"] = $" Cập nhật dịch vụ thành công! " +
+                            $"SL cũ: {result.PreviousQuantity} → SL mới: {result.Quantity} (+{result.QuantityAdded}). " +
+                            $"Tổng tiền: {result.TotalPrice:N0} VNĐ";
+                    }
+                    else
+                    {
+                        TempData["Success"] = $" Thêm dịch vụ mới thành công! " +
+                            $"SL: {result.Quantity}. Tổng tiền: {result.TotalPrice:N0} VNĐ";
+                    }
+                }
+                else
+                {
+                    TempData["Error"] = "Không thể thêm dịch vụ. Vui lòng thử lại.";
+                }
+            }
+            catch (Exception ex)
+            {
+                // Lỗi từ stored procedure
+                TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
+            }
 
-            return View(roomService);
+            return RedirectToAction(nameof(Index), new { reservationFormID });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(string id, string reservationFormID)
+        public async Task<IActionResult> UpdateService(string id, int quantity, string reservationFormID)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
+
+            if (quantity <= 0)
+            {
+                TempData["Error"] = "Số lượng phải lớn hơn 0!";
+                return RedirectToAction(nameof(Index), new { reservationFormID });
+            }
 
             var roomService = await _context.RoomUsageServices.FindAsync(id);
             if (roomService != null)
             {
-                _context.RoomUsageServices.Remove(roomService);
+                roomService.Quantity = quantity;
+                _context.Update(roomService);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Xóa dịch vụ thành công!";
+                TempData["Success"] = "Cập nhật số lượng thành công!";
+            }
+            else
+            {
+                TempData["Error"] = "Không tìm thấy dịch vụ!";
+            }
+
+            return RedirectToAction(nameof(Index), new { reservationFormID });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteService(string id, string reservationFormID)
+        {
+            if (!CheckAuth()) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                // Sử dụng stored procedure để xóa dịch vụ
+                var result = await _context.DeleteRoomServiceSP(id);
+                
+                if (result != null)
+                {
+                    TempData["Success"] = $"Đã xóa dịch vụ: {result.ServiceName} (SL: {result.Quantity}, Tổng: {result.TotalPrice:N0} VNĐ)";
+                }
+                else
+                {
+                    TempData["Error"] = "Không thể xóa dịch vụ. Vui lòng thử lại.";
+                }
+            }
+            catch (Exception ex)
+            {
+                // Lỗi từ stored procedure (VD: phòng đã checkout)
+                TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
             }
 
             return RedirectToAction(nameof(Index), new { reservationFormID });

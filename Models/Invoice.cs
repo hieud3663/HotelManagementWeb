@@ -33,10 +33,61 @@ namespace HotelManagement.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public decimal? TotalDue { get; set; }
 
+        [Required]
+        [Column("taxRate")]
+        [Display(Name = "Thuế suất (%)")]
+        [Range(0, 100, ErrorMessage = "Thuế suất phải từ 0 đến 100")]
+        public decimal TaxRate { get; set; }
+
+        [Column("roomBookingDeposit", TypeName = "decimal(18, 2)")]
+        [Display(Name = "Tiền đặt cọc")]
+        [Range(0, double.MaxValue, ErrorMessage = "Tiền đặt cọc phải >= 0")]
+        public decimal RoomBookingDeposit { get; set; }
+
         [Column("netDue", TypeName = "decimal(18, 2)")]
         [Display(Name = "Tổng tiền sau thuế")]
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public decimal? NetDue { get; set; }
+
+        [Column("totalAmount", TypeName = "decimal(18, 2)")]
+        [Display(Name = "Tổng tiền")]
+        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+        public decimal? TotalAmount { get; set; }
+
+        [Column("earlyCheckinFee", TypeName = "decimal(18, 2)")]
+        [Display(Name = "Phí check-in sớm")]
+        public decimal? EarlyCheckinFee { get; set; }
+
+        [Column("lateCheckoutFee", TypeName = "decimal(18, 2)")]
+        [Display(Name = "Phí check-out muộn")]
+        public decimal? LateCheckoutFee { get; set; }
+
+        [Column("earlyHours")]
+        [Display(Name = "Số giờ check-in sớm")]
+        public int? EarlyHours { get; set; }
+
+        [Column("lateHours")]
+        [Display(Name = "Số giờ check-out muộn")]
+        public int? LateHours { get; set; }
+
+        [Required]
+        [Column("isPaid")]
+        [Display(Name = "Đã thanh toán")]
+        public bool IsPaid { get; set; } = false;
+
+        [Column("paymentDate")]
+        [Display(Name = "Ngày thanh toán")]
+        public DateTime? PaymentDate { get; set; }
+
+        [Column("paymentMethod")]
+        [StringLength(20)]
+        [Display(Name = "Phương thức thanh toán")]
+        public string? PaymentMethod { get; set; }
+
+        [Column("checkoutType")]
+        [StringLength(20)]
+        [Display(Name = "Loại checkout")]
+        public string? CheckoutType { get; set; }
 
         [Required]
         [Column("reservationFormID")]
@@ -46,5 +97,12 @@ namespace HotelManagement.Models
         // Navigation properties
         [ForeignKey("ReservationFormID")]
         public virtual ReservationForm? ReservationForm { get; set; }
+
+        // Helper properties for views
+        [NotMapped]
+        public decimal TaxAmount => TotalDue.HasValue ? TotalDue.Value * (TaxRate / 100) : 0;
+
+        [NotMapped]
+        public decimal Deposit => RoomBookingDeposit;
     }
 }

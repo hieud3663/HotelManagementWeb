@@ -1,0 +1,72 @@
+@model HotelManagement.Models.HotelService
+
+@{
+    ViewData["Title"] = "Xóa dịch vụ";
+}
+
+<!-- Page Header -->
+<div class="page-header fade-in-up">
+    <h1 class="text-danger">
+        <i class="fas fa-trash"></i>
+        Xác nhận xóa dịch vụ
+    </h1>
+    <p>Bạn có chắc chắn muốn xóa dịch vụ này?</p>
+</div>
+
+<!-- Delete Confirmation Card -->
+<div class="card-modern fade-in-up border-danger">
+    <div class="card-header-modern bg-danger text-white">
+        <i class="fas fa-exclamation-triangle me-2"></i>Xóa dịch vụ: @Model.ServiceName
+    </div>
+    <div class="card-body-modern">
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác!
+        </div>
+
+        <dl class="row">
+            <dt class="col-sm-3"><i class="fas fa-hashtag"></i> Mã dịch vụ:</dt>
+            <dd class="col-sm-9"><strong class="text-primary">@Model.HotelServiceId</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-concierge-bell"></i> Tên dịch vụ:</dt>
+            <dd class="col-sm-9"><strong>@Model.ServiceName</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-tag"></i> Danh mục:</dt>
+            <dd class="col-sm-9">@Model.ServiceCategory?.ServiceCategoryName</dd>
+
+            <dt class="col-sm-3"><i class="fas fa-money-bill"></i> Giá:</dt>
+            <dd class="col-sm-9"><strong class="text-success">@Model.ServicePrice.ToString("N0") VNĐ</strong></dd>
+
+            <dt class="col-sm-3"><i class="fas fa-align-left"></i> Mô tả:</dt>
+            <dd class="col-sm-9">@(Model.Description ?? "Không có mô tả")</dd>
+
+            <dt class="col-sm-3"><i class="fas fa-toggle-on"></i> Trạng thái:</dt>
+            <dd class="col-sm-9">
+                @if (Model.IsActivate == "ACTIVATE")
+                {
+                    <span class="badge-modern badge-success-modern">
+                        <i class="fas fa-check-circle"></i> Hoạt động
+                    </span>
+                }
+                else
+                {
+                    <span class="badge-modern badge-danger-modern">
+                        <i class="fas fa-times-circle"></i> Vô hiệu
+                    </span>
+                }
+            </dd>
+        </dl>
+
+        <form asp-action="Delete" method="post" class="d-flex gap-2 mt-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="HotelServiceId" />
+            <button type="submit" class="btn btn-danger-modern"
+                    onclick="return confirm('Bạn THỰC SỰ muốn xóa dịch vụ này?');">
+                <i class="fas fa-trash"></i> Xác nhận xóa
+            </button>
+            <a asp-action="Index" class="btn btn-secondary-modern">
+                <i class="fas fa-times"></i> Hủy bỏ
+            </a>
+        </form>
+    </div>
+</div>

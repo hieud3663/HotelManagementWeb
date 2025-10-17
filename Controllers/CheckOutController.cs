@@ -265,7 +265,12 @@ namespace HotelManagement.Controllers
                     }
                 }
             }
-            var ActualDuration = Math.Ceiling((DateTime.Now - actualCheckInDate).TotalHours);
+
+            var ActualDuration = 0.0;
+            if (priceUnit == "HOUR")
+                ActualDuration = Math.Ceiling((DateTime.Now - actualCheckInDate).TotalHours);
+            else
+                ActualDuration = Math.Ceiling((DateTime.Now - actualCheckInDate).TotalDays);
             
             // Pass data for real-time calculation in view
             ViewBag.UnitPrice = unitPrice;

@@ -294,5 +294,3 @@ Hệ thống được xây dựng dựa trên:
 Dự án học tập - Quản lý Khách sạn
 
 ---
-
-**Chúc bạn sử dụng hệ thống thành công! 🎉**

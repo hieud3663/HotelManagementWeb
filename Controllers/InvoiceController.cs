@@ -81,7 +81,6 @@ namespace HotelManagement.Controllers
 
             if (invoice == null) return NotFound();
 
-            // Return view named "Invoice" to match existing view file
             return View("Invoice", invoice);
         }
     }

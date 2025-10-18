@@ -11,7 +11,7 @@
 <div class="page-header fade-in-up">
     <h1>
         <i class="fas fa-cash-register"></i>
-        Thanh toán Check-out
+        Thanh toán & Trả phòng
     </h1>
     <p>Phiếu đặt phòng #@reservation.ReservationFormID</p>
 </div>
@@ -160,27 +160,16 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>Tiền phòng (<span id="displayTimeUnits">@ViewBag.TimeUnits</span> @(ViewBag.PriceUnit == "DAY" ? "ngày" : "giờ")):</th>
+                        <th>
+                            Thời gian ở thực tế 
+                            (<span id="displayTimeUnits">@ViewBag.TimeUnits</span> @(ViewBag.PriceUnit == "DAY" ? "ngày" : "giờ")):
+                        </th>
                         <td class="text-end"><strong id="roomChargeDisplay">@ViewBag.RoomCharge.ToString("N0") VNĐ</strong></td>
                     </tr>
                     <tr>
                         <th>Tiền dịch vụ:</th>
                         <td class="text-end"><strong id="serviceChargeDisplay">@ViewBag.ServiceCharge.ToString("N0") VNĐ</strong></td>
                     </tr>
-                    @if (ViewBag.EarlyCheckinFee != null && ViewBag.EarlyCheckinFee > 0)
-                    {
-                        <tr>
-                            <th>Phí check-in sớm:</th>
-                            <td class="text-end"><strong class="text-warning" id="earlyCheckinFeeDisplay">@ViewBag.EarlyCheckinFee.ToString("N0") VNĐ</strong></td>
-                        </tr>
-                    }
-                    @if (ViewBag.LateCheckoutFee != null && ViewBag.LateCheckoutFee > 0)
-                    {
-                        <tr>
-                            <th>Phí check-out muộn:</th>
-                            <td class="text-end"><strong class="text-danger" id="lateCheckoutFeeDisplay">@ViewBag.LateCheckoutFee.ToString("N0") VNĐ</strong></td>
-                        </tr>
-                    }
                     <tr>
                         <th>Tổng trước thuế:</th>
                         <td class="text-end"><strong id="subTotalDisplay">@ViewBag.SubTotal.ToString("N0") VNĐ</strong></td>
@@ -209,7 +198,10 @@
 
                 <div class="alert-modern alert-info-modern mt-3">
                     <i class="fas fa-info-circle"></i>
-                    <small>Hóa đơn được cập nhật tự động theo thời gian thực tế</small>
+                    <small>
+                        Tiền phòng tính từ lúc nhận phòng thực tế 
+                        (@ViewBag.ActualCheckInDate.ToString("dd/MM/yyyy HH:mm")) đến hiện tại.
+                    </small>
                 </div>
             </div>
         </div>
@@ -219,12 +211,12 @@
     <div class="col-lg-4">
         <div class="card-modern fade-in-up" style="animation-delay: 0.4s">
             <div class="card-header-modern bg-warning text-white">
-                <i class="fas fa-cash-register me-2"></i>Phương thức thanh toán
+                <i class="fas fa-cash-register me-2"></i>Lựa chọn hình thức
             </div>
             <div class="card-body-modern">
                 <div class="alert-modern alert-info-modern mb-3">
                     <i class="fas fa-info-circle"></i>
-                    <small><strong>Lưu ý:</strong> Chọn phương thức thanh toán phù hợp</small>
+                    <small><strong>Lưu ý:</strong> Chọn hình thức phù hợp</small>
                 </div>
 
                 @* Option 1: Trả phòng và Thanh toán sau (tính theo THỜI GIAN THỰC TẾ) *@
@@ -232,11 +224,10 @@
                     <div class="card-body">
                         <h6 class="card-title">
                             <i class="fas fa-sign-out-alt text-warning"></i> 
-                            <strong>Option 1: Trả phòng & Thanh toán</strong>
+                            <strong>1. Trả phòng & Thanh toán</strong>
                         </h6>
                         <ul class="small mb-3">
-                            <li>Trả phòng ngay → Tạo hóa đơn</li>
-                            <li>Tính theo <strong>THỜI GIAN THỰC TẾ</strong></li>
+                            <li>Tính từ <strong>check-in THỰC TẾ đến HIỆN TẠI</strong></li>
                             <li>Chuyển sang trang thanh toán</li>
                         </ul>
                         <form asp-action="CheckoutThenPay" method="post" id="checkoutThenPayForm">
@@ -247,31 +238,36 @@
                                     id="checkoutThenPayBtn"
                                     data-invoice-id="@(ViewBag.NewInvoiceID ?? 0)"
                                     data-amount="@(ViewBag.AmountDue?.ToString("N0") ?? "0")">
-                                <i class="fas fa-sign-out-alt"></i> Trả phòng ngay
+                                <i class="fas fa-sign-out-alt"></i> Trả phòng ngay & Thanh toán
                             </button>
                         </form>
                     </div>
                 </div>
-
-                @* Option 2: Thanh toán trước (tính theo THỜI GIAN DỰ KIẾN) *@
-                <div class="card" style="border: 2px solid #28a745;">
-                    <div class="card-body">
-                        <h6 class="card-title">
-                            <i class="fas fa-money-bill-wave text-success"></i> 
-                            <strong>Option 2: Thanh toán trước</strong>
-                        </h6>
-                        <ul class="small mb-3">
-                            <li>Thanh toán ngay → Tạo hóa đơn</li>
-                            <li>Tính theo <strong>THỜI GIAN DỰ KIẾN</strong></li>
-                            <li>Khách ở tiếp đến giờ checkout dự kiến</li>
-                            <li>Nếu checkout muộn → Tính phí phụ thu</li>
-                        </ul>
-                        <button type="button" class="btn btn-success-modern w-100" 
-                                data-bs-toggle="modal" data-bs-target="#prepaymentModal">
-                            <i class="fas fa-money-bill-wave"></i> Thanh toán trước
-                        </button>
-                    </div>
-                </div>
+                
+                @* @if (ViewBag.ExistingInvoice == null) *@
+                        
+                @if (false)
+                {
+                    @* Option 2: Thanh toán trước (tính theo THỜI GIAN DỰ KIẾN) *@
+                    @* <div class="card" style="border: 2px solid #28a745;">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-money-bill-wave text-success"></i> 
+                                <strong>Lựa chọn 2: Thanh toán trước</strong>
+                            </h6>
+                            <ul class="small mb-3">
+                                <li>Thanh toán ngay → Tạo hóa đơn</li>
+                                <li>Tính từ <strong>check-in THỰC TẾ đến checkout DỰ KIẾN</strong></li>
+                                <li>Khách ở tiếp đến giờ checkout dự kiến</li>
+                                <li>Checkout muộn → Tính lại theo thời gian thực tế (không phí riêng)</li>
+                            </ul>
+                            <button type="button" class="btn btn-success-modern w-100" 
+                                    data-bs-toggle="modal" data-bs-target="#prepaymentModal">
+                                <i class="fas fa-money-bill-wave"></i> Thanh toán trước
+                            </button>
+                        </div>
+                    </div> *@
+                }
 
                 <a asp-action="Index" class="btn btn-secondary-modern w-100 mt-3">
                     <i class="fas fa-arrow-left"></i> Quay lại
@@ -297,12 +293,14 @@
                     <input type="hidden" name="reservationFormID" value="@reservation.ReservationFormID" />
                     
                     <div class="alert alert-info">
-                        <h6><i class="fas fa-info-circle"></i> Thanh toán theo giờ dự kiến:</h6>
+                        <h6><i class="fas fa-info-circle"></i> Thanh toán theo thời gian dự kiến:</h6>
                         <ul class="mb-0">
-                            <li>Check-in: <strong>@(checkin?.CheckInDate.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</strong></li>
+                            <li>Check-in thực tế: <strong>@(checkin?.CheckInDate.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</strong></li>
                             <li>Check-out DK: <strong>@reservation.CheckOutDate.ToString("dd/MM/yyyy HH:mm")</strong></li>
-                            <li>Khách có thể ở đến giờ checkout dự kiến</li>
-                            <li>Nếu checkout muộn sẽ tính phí bổ sung</li>
+                            <li>Thời gian: <strong>@ViewBag.ExpectedTimeUnits @(ViewBag.PriceUnit == "DAY" ? "ngày" : "giờ")</strong></li>
+                            <li>Tiền phòng: <strong>@ViewBag.ExpectedRoomCharge.ToString("N0") VNĐ</strong></li>
+                            <li>Tiền dịch vụ: <strong>@ViewBag.ServiceCharge.ToString("N0") VNĐ</strong></li>
+                            <li><strong class="text-warning">Nếu checkout muộn:</strong> Hệ thống sẽ tính lại tiền phòng dựa trên thời gian ở thực tế</li>
                         </ul>
                     </div>
 
@@ -330,9 +328,34 @@
                         </div>
                     </div>
 
-                    <div class="alert alert-warning">
-                        <strong><i class="fas fa-calculator"></i> Số tiền thanh toán:</strong>
-                        <h4 class="text-danger mb-0">@ViewBag.AmountDue.ToString("N0") VNĐ</h4>
+                    <div class="alert alert-success">
+                        <strong><i class="fas fa-calculator"></i> Chi tiết thanh toán:</strong>
+                        <table class="table table-sm table-borderless mb-0 mt-2">
+                            <tr>
+                                <td>Tiền phòng (dự kiến):</td>
+                                <td class="text-end"><strong>@ViewBag.ExpectedRoomCharge.ToString("N0") VNĐ</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Tiền dịch vụ:</td>
+                                <td class="text-end"><strong>@ViewBag.ServiceCharge.ToString("N0") VNĐ</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Tạm tính:</td>
+                                <td class="text-end"><strong>@ViewBag.ExpectedSubTotal.ToString("N0") VNĐ</strong></td>
+                            </tr>
+                            <tr>
+                                <td>VAT (10%):</td>
+                                <td class="text-end"><strong>@ViewBag.ExpectedTaxAmount.ToString("N0") VNĐ</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Tiền đặt cọc:</td>
+                                <td class="text-end text-success"><strong>-@ViewBag.Deposit.ToString("N0") VNĐ</strong></td>
+                            </tr>
+                            <tr class="border-top">
+                                <td><strong>TỔNG CỘNG:</strong></td>
+                                <td class="text-end"><h5 class="text-danger mb-0">@ViewBag.ExpectedAmountDue.ToString("N0") VNĐ</h5></td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -340,7 +363,7 @@
                         <i class="fas fa-times"></i> Hủy
                     </button>
                     <button type="submit" class="btn btn-success" 
-                            onclick="return confirm('Xác nhận thanh toán @ViewBag.AmountDue.ToString("N0") VNĐ?\n\nKhách sẽ có thể ở đến @reservation.CheckOutDate.ToString("dd/MM/yyyy HH:mm")');">
+                            onclick="return confirm('Xác nhận thanh toán @ViewBag.ExpectedAmountDue.ToString("N0") VNĐ?\n\nKhách sẽ có thể ở đến @reservation.CheckOutDate.ToString("dd/MM/yyyy HH:mm")\n\nLưu ý: Nếu checkout muộn hơn, hệ thống sẽ tính thêm tiền phòng theo thời gian thực tế.');">
                         <i class="fas fa-check-circle"></i> Xác nhận thanh toán
                     </button>
                 </div>
@@ -351,24 +374,60 @@
 
 @section Scripts {
 <script>
+    const unitPrice = @ViewBag.UnitPrice.ToString("F0");
+    const priceUnit = '@ViewBag.PriceUnit';
+    const checkInTime = new Date('@ViewBag.ActualCheckInDate.ToString("yyyy-MM-ddTHH:mm:ss")');
+    const deposit = @reservation.RoomBookingDeposit;
+    const serviceCharge = @ViewBag.ServiceCharge;
 
+    // Hàm tính toán và cập nhật giá
+    function updatePricing() {
+        const now = new Date();
+        const minutesElapsed = (now - checkInTime) / 1000 / 60; // phút
+        
+        // Tính số đơn vị thời gian (làm tròn)
+        let timeUnits;
+        if (priceUnit === 'DAY') {
+            timeUnits = Math.ceil(minutesElapsed / 1440);
+        } else { // HOUR
+            timeUnits = Math.ceil(minutesElapsed / 60);
+        }
+        
+        if (timeUnits < 1) timeUnits = 1; 
+        
+        // Tính tiền phòng
+        const roomCharge = unitPrice * timeUnits;
+        const subTotal = roomCharge + serviceCharge;
+        const taxAmount = subTotal * 0.1; 
+        const totalAmount = subTotal + taxAmount;
+        const amountDue = totalAmount - deposit;
+        
+        document.getElementById('displayTimeUnits').textContent = timeUnits;
+        document.getElementById('roomChargeDisplay').textContent = Math.round(roomCharge).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('subTotalDisplay').textContent = Math.round(subTotal).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('taxAmountDisplay').textContent = Math.round(taxAmount).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('totalAmountDisplay').textContent = Math.round(totalAmount).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('amountDueDisplay').textContent = Math.round(amountDue).toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    // Cập nhật mỗi giây
     document.addEventListener("DOMContentLoaded", function() {
+        updatePricing(); // Cập nhật ngay khi load
+        setInterval(updatePricing, 1000); // Cập nhật mỗi 1 giây
+        
+        // Xử lý nút checkout
         var btn = document.getElementById('checkoutThenPayBtn');
         if (btn) {
             btn.addEventListener('click', function() {
-                var amount = btn.getAttribute('data-amount');
-                var invoiceID = btn.getAttribute('data-invoice-id');
-                console.log(amount);
-                const confirmed = confirm(`Trả phòng và thanh toán sau?\n\nTiền phòng sẽ tính theo THỜI GIAN THỰC TẾ:\n- Từ check-in thực tế đến HIỆN TẠI\n- Bao gồm phí check-in sớm và checkout muộn\n\nSố tiền: ${amount} VNĐ`);
+                const confirmed = confirm('Trả phòng và thanh toán sau?\n\n' +
+                    'Tiền phòng tính theo THỜI GIAN Ở THỰC TẾ:\n' +
+                    '- Từ lúc nhận phòng thực tế đến hiện tại\n' +
+                    'Xác nhận?');
                 if (confirmed) {
                     document.getElementById('checkoutThenPayForm').submit();
-                    window.location.href = '/Invoice/Index';
                 }
             });
         }
     });
-
-
-    
 </script>
 }

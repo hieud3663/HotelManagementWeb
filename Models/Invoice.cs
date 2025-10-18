@@ -54,22 +54,6 @@ namespace HotelManagement.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public decimal? TotalAmount { get; set; }
 
-        [Column("earlyCheckinFee", TypeName = "decimal(18, 2)")]
-        [Display(Name = "Phí check-in sớm")]
-        public decimal? EarlyCheckinFee { get; set; }
-
-        [Column("lateCheckoutFee", TypeName = "decimal(18, 2)")]
-        [Display(Name = "Phí check-out muộn")]
-        public decimal? LateCheckoutFee { get; set; }
-
-        [Column("earlyHours")]
-        [Display(Name = "Số giờ check-in sớm")]
-        public int? EarlyHours { get; set; }
-
-        [Column("lateHours")]
-        [Display(Name = "Số giờ check-out muộn")]
-        public int? LateHours { get; set; }
-
         [Required]
         [Column("isPaid")]
         [Display(Name = "Đã thanh toán")]
@@ -103,6 +87,12 @@ namespace HotelManagement.Models
         public decimal TaxAmount => TotalDue.HasValue ? TotalDue.Value * (TaxRate / 100) : 0;
 
         [NotMapped]
-        public decimal Deposit => RoomBookingDeposit;
+        public decimal Deposit => RoomBookingDeposit;        
+        
+        
+        [Column("amountPaid", TypeName = "decimal(18,2)")]
+        [Display(Name = "Số tiền khách đã trả")]
+        [Range(0, double.MaxValue, ErrorMessage = "Số tiền phải lớn hơn hoặc bằng 0")]
+        public decimal AmountPaid { get; set; }
     }
 }

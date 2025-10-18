@@ -249,12 +249,6 @@ ADD roomBookingDeposit DECIMAL(18, 2);
 ALTER TABLE Invoice
 ADD taxRate FLOAT NOT NULL DEFAULT 0.1 CHECK (taxRate >= 0 AND taxRate <= 1),
     totalAmount AS ((roomCharge + servicesCharge - roomBookingDeposit) * (1+taxRate)) PERSISTED;
-
-ALTER TABLE Invoice
-ADD earlyCheckinFee DECIMAL(18,2) NULL,
-    lateCheckoutFee DECIMAL(18,2) NULL,
-    earlyHours INT NULL,
-    lateHours INT NULL;
 GO
 
 -- Thêm các cột mới cho luồng thanh toán mới
@@ -263,6 +257,11 @@ ADD isPaid BIT NOT NULL DEFAULT 0,              -- 0 = Chưa thanh toán, 1 = Đ
     paymentDate DATETIME NULL,                  -- Ngày thanh toán thực tế
     paymentMethod NVARCHAR(20) NULL CHECK (paymentMethod IN ('CASH', 'CARD', 'TRANSFER', NULL)),
     checkoutType NVARCHAR(20) NULL CHECK (checkoutType IN ('CHECKOUT_THEN_PAY', 'PAY_THEN_CHECKOUT', NULL));
+GO
+
+ALTER TABLE Invoice
+ADD amountPaid DECIMAL(18,2) NOT NULL DEFAULT 0;
+
 GO
 
 -- Thêm cột invoiceID vào HistoryCheckOut
@@ -874,7 +873,8 @@ BEGIN
             @earlyCheckinFee DECIMAL(18,2) = 0,
             @lateCheckoutFee DECIMAL(18,2) = 0,
             @checkoutType NVARCHAR(20),
-            @isPaid BIT;
+            @isPaid BIT,
+            @amountPaid DECIMAL(18,2) = 0;
 
     SELECT 
         @reservationFormID = i.reservationFormID,
@@ -885,7 +885,8 @@ BEGIN
         @checkInDateExpected = rf.checkInDate,
         @checkOutDateExpected = rf.checkOutDate,
         @checkoutType = i.checkoutType,
-        @isPaid = ISNULL(i.isPaid, 0)
+        @isPaid = ISNULL(i.isPaid, 0),
+        @amountPaid = ISNULL(i.amountPaid, 0)
     FROM inserted i
     JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
     JOIN Room r ON rf.roomID = r.roomID;
@@ -910,16 +911,14 @@ BEGIN
     IF @hourPrice IS NULL OR @hourPrice = 0 SET @hourPrice = @unitPrice;
 
     -- ================================================================================
-    -- LOGIC TÍNH TIỀN THEO LUỒNG THANH TOÁN:
+    -- LOGIC MỚI - ĐƠN GIẢN HÓA:
+    -- Tính tiền trực tiếp từ check-in THỰC TẾ → checkout THỰC TẾ
+    -- KHÔNG CÒN phí check-in sớm hay checkout muộn riêng biệt
     -- 
-    -- CHECKOUT_THEN_PAY: 
-    --   - Tính theo thời gian THỰC TẾ (checkInActual → checkOutActual)
-    --   - Bao gồm phí check-in sớm và checkout muộn
-    --
-    -- PAY_THEN_CHECKOUT:
-    --   - Lần đầu: Tính theo thời gian DỰ KIẾN (checkInActual → checkOutExpected)
-    --   - Chỉ tính phí check-in sớm, KHÔNG tính checkout muộn (vì chưa checkout)
-    --   - Sau khi checkout thực tế: Tính lại với checkOutActual + phí muộn
+    -- CHECKOUT_THEN_PAY: Tính từ actualCheckIn → actualCheckOut
+    -- PAY_THEN_CHECKOUT: 
+    --   - Lần đầu: Tính từ actualCheckIn → expectedCheckOut
+    --   - Sau checkout: Tính lại từ actualCheckIn → actualCheckOut
     -- ================================================================================
     DECLARE @bookingMinutes INT;
     DECLARE @timeUnits INT;
@@ -938,9 +937,10 @@ BEGIN
         SET @effectiveCheckOut = ISNULL(@checkOutDateActual, @checkOutDateExpected);
     END
     
-    -- Tính số phút thực tế khách ở
+    -- Tính số phút THỰC TẾ khách ở (từ actual check-in → checkout)
     SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
     
+    -- Tính tiền phòng trực tiếp (KHÔNG CÒN PHÍ PHỤ THU)
     IF @priceUnit = 'DAY'
     BEGIN
         SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
@@ -952,161 +952,9 @@ BEGIN
         SET @roomCharge = @timeUnits * @unitPrice;
     END
 
-    -- BƯỚC 2: PHÍ CHECK-IN SỚM
-    IF @checkInDateActual IS NOT NULL AND @checkInDateActual < @checkInDateExpected
-    BEGIN
-        DECLARE @earlyMinutes INT = DATEDIFF(MINUTE, @checkInDateActual, @checkInDateExpected);
-        DECLARE @freeMinutesEarly INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
-        
-        IF @earlyMinutes > @freeMinutesEarly
-        BEGIN
-            DECLARE @chargeableEarlyMinutes INT = @earlyMinutes - @freeMinutesEarly;
-            
-            IF @priceUnit = 'HOUR'
-            BEGIN
-                -- **BẬC THANG GIỐNG CONTROLLER**
-                DECLARE @earlyHours DECIMAL(10,2) = CEILING(@chargeableEarlyMinutes / 60.0);
-                DECLARE @tier1E DECIMAL(18,2) = 0, @tier2E DECIMAL(18,2) = 0, @tier3E DECIMAL(18,2) = 0;
-                
-                IF @earlyHours <= 2
-                    SET @tier1E = @earlyHours * @hourPrice;
-                ELSE
-                    SET @tier1E = 2 * @hourPrice;
-                
-                IF @earlyHours > 2 AND @earlyHours <= 6
-                    SET @tier2E = (@earlyHours - 2) * @hourPrice * 0.8;
-                ELSE IF @earlyHours > 6
-                    SET @tier2E = 4 * @hourPrice * 0.8;
-                
-                IF @earlyHours > 6
-                    SET @tier3E = (@earlyHours - 6) * @hourPrice * 0.8;
-                
-                SET @earlyCheckinFee = @tier1E + @tier2E + @tier3E;
-            END
-            ELSE -- DAY
-            BEGIN
-                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
-                DECLARE @currentE DATETIME = @checkInDateActual;
-                DECLARE @endE DATETIME = @checkInDateExpected;
-                DECLARE @totalE DECIMAL(18,2) = 0;
-                
-                WHILE @currentE < @endE
-                BEGIN
-                    DECLARE @hourE INT = DATEPART(HOUR, @currentE);
-                    DECLARE @rateE DECIMAL(5,2) = 0;
-                    DECLARE @bracketE DATETIME;
-                    
-                    IF @hourE >= 5 AND @hourE < 9
-                    BEGIN
-                        SET @rateE = 0.5;
-                        SET @bracketE = DATEADD(HOUR, 9 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
-                    END
-                    ELSE IF @hourE >= 9 AND @hourE < 14
-                    BEGIN
-                        SET @rateE = 0.3;
-                        SET @bracketE = DATEADD(HOUR, 14 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
-                    END
-                    ELSE
-                    BEGIN
-                        SET @rateE = 0;
-                        SET @bracketE = DATEADD(HOUR, 1, @currentE);
-                    END
-                    
-                    DECLARE @actualBracketE DATETIME = CASE WHEN @bracketE < @endE THEN @bracketE ELSE @endE END;
-                    DECLARE @minutesE INT = DATEDIFF(MINUTE, @currentE, @actualBracketE);
-                    
-                    IF @rateE > 0
-                        SET @totalE = @totalE + (@minutesE / 1440.0) * @dayPrice * @rateE;
-                    
-                    SET @currentE = @actualBracketE;
-                END
-                
-                SET @earlyCheckinFee = @totalE;
-            END
-        END
-    END
-
-    -- BƯỚC 3: PHÍ CHECK-OUT MUỘN
-    IF @checkOutDateActual IS NOT NULL AND @checkOutDateActual > @checkOutDateExpected
-    BEGIN
-        DECLARE @lateMinutes INT = DATEDIFF(MINUTE, @checkOutDateExpected, @checkOutDateActual);
-        DECLARE @freeMinutesLate INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
-        
-        IF @lateMinutes > @freeMinutesLate
-        BEGIN
-            DECLARE @chargeableLateMinutes INT = @lateMinutes - @freeMinutesLate;
-            
-            IF @priceUnit = 'HOUR'
-            BEGIN
-                -- **BẬC THANG GIỐNG CONTROLLER**
-                DECLARE @lateHours DECIMAL(10,2) = CEILING(@chargeableLateMinutes / 60.0);
-                DECLARE @tier1L DECIMAL(18,2) = 0, @tier2L DECIMAL(18,2) = 0, @tier3L DECIMAL(18,2) = 0;
-                
-                IF @lateHours <= 2
-                    SET @tier1L = @lateHours * @hourPrice;
-                ELSE
-                    SET @tier1L = 2 * @hourPrice;
-                
-                IF @lateHours > 2 AND @lateHours <= 6
-                    SET @tier2L = (@lateHours - 2) * @hourPrice * 0.8;
-                ELSE IF @lateHours > 6
-                    SET @tier2L = 4 * @hourPrice * 0.8;
-                
-                IF @lateHours > 6
-                    SET @tier3L = (@lateHours - 6) * @hourPrice * 0.8;
-                
-                SET @lateCheckoutFee = @tier1L + @tier2L + @tier3L;
-            END
-            ELSE -- DAY
-            BEGIN
-                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
-                DECLARE @currentL DATETIME = DATEADD(MINUTE, @freeMinutesLate, @checkOutDateExpected);
-                DECLARE @endL DATETIME = @checkOutDateActual;
-                DECLARE @totalL DECIMAL(18,2) = 0;
-                
-                WHILE @currentL < @endL
-                BEGIN
-                    DECLARE @hourL INT = DATEPART(HOUR, @currentL);
-                    DECLARE @rateL DECIMAL(5,2) = 0;
-                    DECLARE @bracketL DATETIME;
-                    
-                    IF @hourL >= 12 AND @hourL < 15
-                    BEGIN
-                        SET @rateL = 0.3;
-                        SET @bracketL = DATEADD(HOUR, 15 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
-                    END
-                    ELSE IF @hourL >= 15 AND @hourL < 18
-                    BEGIN
-                        SET @rateL = 0.5;
-                        SET @bracketL = DATEADD(HOUR, 18 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
-                    END
-                    ELSE IF @hourL >= 18
-                    BEGIN
-                        SET @rateL = 1.0;
-                        SET @bracketL = DATEADD(HOUR, 24 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
-                    END
-                    ELSE
-                    BEGIN
-                        SET @rateL = 0;
-                        SET @bracketL = DATEADD(HOUR, 1, @currentL);
-                    END
-                    
-                    DECLARE @actualBracketL DATETIME = CASE WHEN @bracketL < @endL THEN @bracketL ELSE @endL END;
-                    DECLARE @minutesL INT = DATEDIFF(MINUTE, @currentL, @actualBracketL);
-                    
-                    IF @rateL > 0
-                        SET @totalL = @totalL + (@minutesL / 1440.0) * @dayPrice * @rateL;
-                    
-                    SET @currentL = @actualBracketL;
-                END
-                
-                SET @lateCheckoutFee = @totalL;
-            END
-        END
-    END
-
-    -- CỘNG PHÍ VÀO ROOMCHARGE
-    SET @roomCharge = @roomCharge + @earlyCheckinFee + @lateCheckoutFee;
+    -- KHÔNG CÒN TÍNH PHÍ SỚM/MUỘN - ĐÃ BAO GỒM TRONG ROOMCHARGE
+    SET @earlyCheckinFee = 0;
+    SET @lateCheckoutFee = 0;
 
     -- TÍNH PHÍ DỊCH VỤ
     DECLARE @servicesCharge DECIMAL(18,2);
@@ -1114,17 +962,12 @@ BEGIN
     FROM RoomUsageService
     WHERE reservationFormID = @reservationFormID;
 
-    -- INSERT
     INSERT INTO Invoice (
-        invoiceID, invoiceDate, earlyHours, earlyCheckinFee, lateHours, lateCheckoutFee, roomCharge, servicesCharge, roomBookingDeposit, reservationFormID, paymentDate, paymentMethod, checkoutType, isPaid
+        invoiceID, invoiceDate, roomCharge, servicesCharge, roomBookingDeposit, reservationFormID, paymentDate, paymentMethod, checkoutType, isPaid, amountPaid
     )
     SELECT 
         COALESCE(i.invoiceID, dbo.fn_GenerateID('INV-', 'Invoice', 'invoiceID', 6)),
         COALESCE(i.invoiceDate, GETDATE()),
-        ROUND(@earlyHours, 0),
-        ROUND(@earlyCheckinFee, 0),
-        ROUND(@lateHours, 0),
-        ROUND(@lateCheckoutFee, 0),
         ROUND(@roomCharge, 0),
         ROUND(@servicesCharge, 0),
         ROUND(@roomBookingDeposit, 0),
@@ -1132,7 +975,8 @@ BEGIN
         CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentDate, GETDATE()) ELSE NULL END,
         CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentMethod, 'CASH') ELSE NULL END,
         i.checkoutType,
-        @isPaid
+        @isPaid,
+        @amountPaid
     FROM inserted i;
 END;
 GO
@@ -1168,18 +1012,21 @@ BEGIN
             @earlyCheckinFee DECIMAL(18,2) = 0,
             @lateCheckoutFee DECIMAL(18,2) = 0,
             @checkoutType NVARCHAR(20),
-            @isPaid BIT;
+            @isPaid BIT,
+            @amountPaid DECIMAL(18,2);
 
     SELECT 
         @reservationFormID = i.reservationFormID,
         @priceUnit = rf.priceUnit,
         @unitPrice = rf.unitPrice,
+        @roomCharge = i.roomCharge,
         @roomBookingDeposit = rf.roomBookingDeposit,
         @roomCategoryID = r.roomCategoryID,
         @checkInDateExpected = rf.checkInDate,
         @checkOutDateExpected = rf.checkOutDate,
         @checkoutType = i.checkoutType,
-        @isPaid = ISNULL(i.isPaid, 0)
+        @isPaid = ISNULL(i.isPaid, 0),
+        @amountPaid = ISNULL(i.amountPaid, 0)
     FROM inserted i
     JOIN ReservationForm rf ON i.reservationFormID = rf.reservationFormID
     JOIN Room r ON rf.roomID = r.roomID;
@@ -1204,241 +1051,81 @@ BEGIN
     IF @hourPrice IS NULL OR @hourPrice = 0 SET @hourPrice = @unitPrice;
 
     -- ================================================================================
-    -- LOGIC TÍNH TIỀN THEO LUỒNG THANH TOÁN:
-    -- 
-    -- CHECKOUT_THEN_PAY: 
-    --   - Tính theo thời gian THỰC TẾ (checkInActual → checkOutActual)
-    --   - Bao gồm phí check-in sớm và checkout muộn
-    --
-    -- PAY_THEN_CHECKOUT:
-    --   - Lần đầu: Tính theo thời gian DỰ KIẾN (checkInActual → checkOutExpected)
-    --   - Chỉ tính phí check-in sớm, KHÔNG tính checkout muộn (vì chưa checkout)
-    --   - Sau khi checkout thực tế: Tính lại với checkOutActual + phí muộn
+    -- LOGIC MỚI - ĐƠN GIẢN HÓA:
+    -- CHECKOUT_THEN_PAY: Tính từ checkInActual → checkOutActual
+    -- PAY_THEN_CHECKOUT: 
+    --   - Lần đầu: Tính từ checkInActual → checkOutExpected
+    --   - Sau checkout: Tính lại từ checkInActual → checkOutActual
     -- ================================================================================
-    DECLARE @bookingMinutes INT;
-    DECLARE @timeUnits INT;
-    DECLARE @effectiveCheckIn DATETIME = ISNULL(@checkInDateActual, @checkInDateExpected);
-    DECLARE @effectiveCheckOut DATETIME;
+    -- ===========================[Thích thì bỏ cmt để tính lại, nhma thôi]====================================================
+    -- DECLARE @bookingMinutes INT;
+    -- DECLARE @timeUnits INT;
+    -- DECLARE @effectiveCheckIn DATETIME = ISNULL(@checkInDateActual, @checkInDateExpected);
+    -- DECLARE @effectiveCheckOut DATETIME;
     
-    -- Xác định thời gian checkout dựa trên loại thanh toán
-    IF @checkoutType = 'PAY_THEN_CHECKOUT' AND @checkOutDateActual IS NULL
-    BEGIN
-        -- Thanh toán trước: Tính theo checkout DỰ KIẾN
-        SET @effectiveCheckOut = @checkOutDateExpected;
-    END
-    ELSE
-    BEGIN
-        -- Checkout rồi thanh toán HOẶC đã có checkout thực tế: Tính theo THỰC TẾ
-        SET @effectiveCheckOut = ISNULL(@checkOutDateActual, @checkOutDateExpected);
-    END
+    -- -- Xác định thời gian checkout dựa trên loại thanh toán
+    -- IF @checkoutType = 'PAY_THEN_CHECKOUT' AND @checkOutDateActual IS NULL
+    -- BEGIN
+    --     -- Thanh toán trước: Tính theo checkout DỰ KIẾN
+    --     SET @effectiveCheckOut = @checkOutDateExpected;
+    -- END
+    -- ELSE
+    -- BEGIN
+    --     -- Checkout rồi thanh toán HOẶC đã có checkout thực tế: Tính theo THỰC TẾ
+    --     SET @effectiveCheckOut = ISNULL(@checkOutDateActual, @checkOutDateExpected);
+    -- END
     
-    -- Tính số phút thực tế khách ở
-    SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
+    -- -- Tính số phút thực tế khách ở
+    -- SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
     
-    IF @priceUnit = 'DAY'
-    BEGIN
-        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
-        SET @roomCharge = @timeUnits * @unitPrice;
-    END
-    ELSE IF @priceUnit = 'HOUR'
-    BEGIN
-        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 60.0) END;
-        SET @roomCharge = @timeUnits * @unitPrice;
-    END
+    -- IF @priceUnit = 'DAY'
+    -- BEGIN
+    --     SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
+    --     SET @roomCharge = @timeUnits * @unitPrice;
+    -- END
+    -- ELSE IF @priceUnit = 'HOUR'
+    -- BEGIN
+    --     SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 60.0) END;
+    --     SET @roomCharge = @timeUnits * @unitPrice;
+    -- END
 
-    -- BƯỚC 2: PHÍ CHECK-IN SỚM
-    IF @checkInDateActual IS NOT NULL AND @checkInDateActual < @checkInDateExpected
+    -- -- Tính tiền còn lại nếu khách check-out muộn
+    -- IF @checkOutDateActual > @checkOutDateExpected
+    -- BEGIN
+    --     DECLARE @extraMinutes INT = DATEDIFF(MINUTE, @checkOutDateExpected, @checkOutDateActual);
+    --     DECLARE @extraCharge DECIMAL(18,2);
     
-    -- Tính số phút thực tế khách ở
-    SET @bookingMinutes = DATEDIFF(MINUTE, @effectiveCheckIn, @effectiveCheckOut);
+    --     IF @priceUnit = 'DAY'
+    --     BEGIN
+    --         SET @extraCharge = CEILING(@extraMinutes / 1440.0) * @unitPrice;
+    --     END
+    --     ELSE IF @priceUnit = 'HOUR'
+    --     BEGIN
+    --         SET @extraCharge = CEILING(@extraMinutes / 60.0) * @unitPrice;
+    --     END
     
-    IF @priceUnit = 'DAY'
-    BEGIN
-        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 1440.0) END;
-        SET @roomCharge = @timeUnits * @unitPrice;
-    END
-    ELSE IF @priceUnit = 'HOUR'
-    BEGIN
-        SET @timeUnits = CASE WHEN @bookingMinutes <= 0 THEN 1 ELSE CEILING(@bookingMinutes / 60.0) END;
-        SET @roomCharge = @timeUnits * @unitPrice;
-    END
-
-    -- BƯỚC 2: PHÍ CHECK-IN SỚM
-    IF @checkInDateActual IS NOT NULL AND @checkInDateActual < @checkInDateExpected
-    BEGIN
-        DECLARE @earlyMinutes INT = DATEDIFF(MINUTE, @checkInDateActual, @checkInDateExpected);
-        DECLARE @freeMinutesEarly INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
-        
-        IF @earlyMinutes > @freeMinutesEarly
-        BEGIN
-            DECLARE @chargeableEarlyMinutes INT = @earlyMinutes - @freeMinutesEarly;
-            
-            IF @priceUnit = 'HOUR'
-            BEGIN
-                -- **BẬC THANG GIỐNG CONTROLLER**
-                DECLARE @earlyHours DECIMAL(10,2) = CEILING(@chargeableEarlyMinutes / 60.0);
-                DECLARE @tier1E DECIMAL(18,2) = 0, @tier2E DECIMAL(18,2) = 0, @tier3E DECIMAL(18,2) = 0;
-                
-                IF @earlyHours <= 2
-                    SET @tier1E = @earlyHours * @hourPrice;
-                ELSE
-                    SET @tier1E = 2 * @hourPrice;
-                
-                IF @earlyHours > 2 AND @earlyHours <= 6
-                    SET @tier2E = (@earlyHours - 2) * @hourPrice * 0.8;
-                ELSE IF @earlyHours > 6
-                    SET @tier2E = 4 * @hourPrice * 0.8;
-                
-                IF @earlyHours > 6
-                    SET @tier3E = (@earlyHours - 6) * @hourPrice * 0.8;
-                
-                SET @earlyCheckinFee = @tier1E + @tier2E + @tier3E;
-            END
-            ELSE -- DAY
-            BEGIN
-                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
-                DECLARE @currentE DATETIME = @checkInDateActual;
-                DECLARE @endE DATETIME = @checkInDateExpected;
-                DECLARE @totalE DECIMAL(18,2) = 0;
-                
-                WHILE @currentE < @endE
-                BEGIN
-                    DECLARE @hourE INT = DATEPART(HOUR, @currentE);
-                    DECLARE @rateE DECIMAL(5,2) = 0;
-                    DECLARE @bracketE DATETIME;
-                    
-                    IF @hourE >= 5 AND @hourE < 9
-                    BEGIN
-                        SET @rateE = 0.5;
-                        SET @bracketE = DATEADD(HOUR, 9 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
-                    END
-                    ELSE IF @hourE >= 9 AND @hourE < 14
-                    BEGIN
-                        SET @rateE = 0.3;
-                        SET @bracketE = DATEADD(HOUR, 14 - @hourE, DATEADD(MINUTE, -DATEPART(MINUTE, @currentE), @currentE));
-                    END
-                    ELSE
-                    BEGIN
-                        SET @rateE = 0;
-                        SET @bracketE = DATEADD(HOUR, 1, @currentE);
-                    END
-                    
-                    DECLARE @actualBracketE DATETIME = CASE WHEN @bracketE < @endE THEN @bracketE ELSE @endE END;
-                    DECLARE @minutesE INT = DATEDIFF(MINUTE, @currentE, @actualBracketE);
-                    
-                    IF @rateE > 0
-                        SET @totalE = @totalE + (@minutesE / 1440.0) * @dayPrice * @rateE;
-                    
-                    SET @currentE = @actualBracketE;
-                END
-                
-                SET @earlyCheckinFee = @totalE;
-            END
-        END
-    END
-
-    -- BƯỚC 3: PHÍ CHECK-OUT MUỘN
-    IF @checkOutDateActual IS NOT NULL AND @checkOutDateActual > @checkOutDateExpected
-    BEGIN
-        DECLARE @lateMinutes INT = DATEDIFF(MINUTE, @checkOutDateExpected, @checkOutDateActual);
-        DECLARE @freeMinutesLate INT = CASE WHEN @priceUnit = 'HOUR' THEN 30 ELSE 60 END;
-        
-        IF @lateMinutes > @freeMinutesLate
-        BEGIN
-            DECLARE @chargeableLateMinutes INT = @lateMinutes - @freeMinutesLate;
-            
-            IF @priceUnit = 'HOUR'
-            BEGIN
-                -- **BẬC THANG GIỐNG CONTROLLER**
-                DECLARE @lateHours DECIMAL(10,2) = CEILING(@chargeableLateMinutes / 60.0);
-                DECLARE @tier1L DECIMAL(18,2) = 0, @tier2L DECIMAL(18,2) = 0, @tier3L DECIMAL(18,2) = 0;
-                
-                IF @lateHours <= 2
-                    SET @tier1L = @lateHours * @hourPrice;
-                ELSE
-                    SET @tier1L = 2 * @hourPrice;
-                
-                IF @lateHours > 2 AND @lateHours <= 6
-                    SET @tier2L = (@lateHours - 2) * @hourPrice * 0.8;
-                ELSE IF @lateHours > 6
-                    SET @tier2L = 4 * @hourPrice * 0.8;
-                
-                IF @lateHours > 6
-                    SET @tier3L = (@lateHours - 6) * @hourPrice * 0.8;
-                
-                SET @lateCheckoutFee = @tier1L + @tier2L + @tier3L;
-            END
-            ELSE -- DAY
-            BEGIN
-                -- **TÍCH LŨY TỪNG KHUNG GIỜ GIỐNG CONTROLLER**
-                DECLARE @currentL DATETIME = DATEADD(MINUTE, @freeMinutesLate, @checkOutDateExpected);
-                DECLARE @endL DATETIME = @checkOutDateActual;
-                DECLARE @totalL DECIMAL(18,2) = 0;
-                
-                WHILE @currentL < @endL
-                BEGIN
-                    DECLARE @hourL INT = DATEPART(HOUR, @currentL);
-                    DECLARE @rateL DECIMAL(5,2) = 0;
-                    DECLARE @bracketL DATETIME;
-                    
-                    IF @hourL >= 12 AND @hourL < 15
-                    BEGIN
-                        SET @rateL = 0.3;
-                        SET @bracketL = DATEADD(HOUR, 15 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
-                    END
-                    ELSE IF @hourL >= 15 AND @hourL < 18
-                    BEGIN
-                        SET @rateL = 0.5;
-                        SET @bracketL = DATEADD(HOUR, 18 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
-                    END
-                    ELSE IF @hourL >= 18
-                    BEGIN
-                        SET @rateL = 1.0;
-                        SET @bracketL = DATEADD(HOUR, 24 - @hourL, DATEADD(MINUTE, -DATEPART(MINUTE, @currentL), @currentL));
-                    END
-                    ELSE
-                    BEGIN
-                        SET @rateL = 0;
-                        SET @bracketL = DATEADD(HOUR, 1, @currentL);
-                    END
-                    
-                    DECLARE @actualBracketL DATETIME = CASE WHEN @bracketL < @endL THEN @bracketL ELSE @endL END;
-                    DECLARE @minutesL INT = DATEDIFF(MINUTE, @currentL, @actualBracketL);
-                    
-                    IF @rateL > 0
-                        SET @totalL = @totalL + (@minutesL / 1440.0) * @dayPrice * @rateL;
-                    
-                    SET @currentL = @actualBracketL;
-                END
-                
-                SET @lateCheckoutFee = @totalL;
-            END
-        END
-    END
-
-    -- CỘNG PHÍ VÀO ROOMCHARGE
-    SET @roomCharge = @roomCharge + @earlyCheckinFee + @lateCheckoutFee;
+    --     -- Cộng thêm tiền vào roomCharge
+    --     SET @roomCharge = @roomCharge + @extraCharge;
+    -- END
 
     -- TÍNH PHÍ DỊCH VỤ
     DECLARE @servicesCharge DECIMAL(18,2);
     SELECT @servicesCharge = ISNULL(SUM(quantity * unitPrice), 0)
     FROM RoomUsageService
     WHERE reservationFormID = @reservationFormID;
+    --====[ Thích thì bỏ cmt để update nó tính lại ]
 
-    -- UPDATE
+    -- UPDATE 
     UPDATE Invoice
     SET invoiceDate = COALESCE(i.invoiceDate, GETDATE()),
         roomCharge = ROUND(@roomCharge, 0),
         servicesCharge = ROUND(@servicesCharge, 0),
         roomBookingDeposit = ROUND(@roomBookingDeposit, 0),
-        earlyCheckinFee = ROUND(@earlyCheckinFee, 0),
-        lateCheckoutFee = ROUND(@lateCheckoutFee, 0),
-        earlyHours = ROUND(@earlyHours, 0),
-        lateHours = ROUND(@lateHours, 0),
         isPaid = @isPaid,
         paymentDate = CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentDate, GETDATE()) ELSE NULL END,
         paymentMethod = CASE WHEN @isPaid = 1 THEN COALESCE(i.paymentMethod, 'CASH') ELSE NULL END,
-        checkoutType = i.checkoutType
+        checkoutType = i.checkoutType,
+        amountPaid = @amountPaid
     FROM Invoice inv
     JOIN inserted i ON inv.invoiceID = i.invoiceID;
 END;
@@ -2432,6 +2119,7 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
         
+        
         -- Kiểm tra đã check-in chưa
         IF NOT EXISTS (SELECT 1 FROM HistoryCheckin WHERE reservationFormID = @reservationFormID)
         BEGIN
@@ -2481,8 +2169,6 @@ BEGIN
         -- Cập nhật invoiceID vào HistoryCheckOut
         UPDATE HistoryCheckOut SET invoiceID = @invoiceID WHERE historyCheckOutID = @checkOutID;
         
-        -- Cập nhật trạng thái phòng thành UNAVAILABLE (đợi thanh toán)
-        UPDATE Room SET roomStatus = 'UNAVAILABLE' WHERE roomID = @roomID;
         
         -- Trả về thông tin invoice
         SELECT 
@@ -2546,11 +2232,11 @@ BEGIN
         
         INSERT INTO Invoice (
             invoiceID, invoiceDate, roomCharge, servicesCharge, 
-            reservationFormID, isPaid, paymentDate, paymentMethod, checkoutType
+            reservationFormID, isPaid, paymentDate, paymentMethod, checkoutType, amountPaid
         )
         VALUES (
             @invoiceID, GETDATE(), 0, 0, 
-            @reservationFormID, 1, GETDATE(), @paymentMethod, 'PAY_THEN_CHECKOUT'
+            @reservationFormID, 1, GETDATE(), @paymentMethod, 'PAY_THEN_CHECKOUT', 0
         );
         
         -- Phòng vẫn ON_USE, khách tiếp tục ở
@@ -2605,9 +2291,11 @@ BEGIN
         END
         
         -- Kiểm tra đã thanh toán chưa
-        DECLARE @isPaid BIT;
-        SELECT @isPaid = isPaid FROM Invoice WHERE invoiceID = @invoiceID;
-        
+        DECLARE @isPaid BIT,
+                @totalAmount Decimal(18,2)
+
+        SELECT @isPaid = isPaid, @totalAmount = totalAmount FROM Invoice WHERE invoiceID = @invoiceID;
+
         IF @isPaid = 1
         BEGIN
             RAISERROR(N'Hóa đơn đã được thanh toán', 16, 1);
@@ -2615,11 +2303,23 @@ BEGIN
             RETURN -1;
         END
         
+        -- xem thử phòng đã check-out chưa
+        IF EXISTS (
+            SELECT 1 
+            FROM HistoryCheckOut hco
+            JOIN Invoice inv ON hco.invoiceID = inv.invoiceID
+            WHERE inv.invoiceID = @invoiceID
+        )
+        BEGIN
+            SET @isPaid = 1
+        END
+
         -- Cập nhật trạng thái thanh toán
         UPDATE Invoice
-        SET isPaid = 1,
+        SET isPaid = @isPaid,
             paymentDate = GETDATE(),
-            paymentMethod = @paymentMethod
+            paymentMethod = @paymentMethod,
+            amountPaid = @totalAmount
         WHERE invoiceID = @invoiceID;
         
         -- Lấy roomID để giải phóng phòng
@@ -2715,19 +2415,27 @@ BEGIN
         -- Kiểm tra checkout muộn
         DECLARE @additionalCharge DECIMAL(18,2) = 0;
         DECLARE @checkoutStatus NVARCHAR(20) = 'ON_TIME';
+        DECLARE @originalCharge DECIMAL(18,2);
+        
+        -- Lưu roomCharge ban đầu (trước khi checkout thực tế)
+        SELECT @originalCharge = roomCharge FROM Invoice WHERE invoiceID = @invoiceID;
         
         IF @checkOutActual > @checkOutExpected
         BEGIN
             SET @checkoutStatus = 'LATE_CHECKOUT';
             
-            -- Trigger TR_Invoice_ManageUpdate sẽ tự động tính lại lateCheckoutFee
+            -- Trigger TR_Invoice_ManageUpdate sẽ tự động tính lại roomCharge dựa trên checkout thực tế
             UPDATE Invoice 
-            SET invoiceDate = GETDATE()  -- Force trigger update
+            SET invoiceDate = GETDATE(),  -- Force trigger update
+                isPaid = 0 --Khách chưa thanh toán hết
             WHERE invoiceID = @invoiceID;
             
-            SELECT @additionalCharge = ISNULL(lateCheckoutFee, 0)
+            -- Tính phí phát sinh = roomCharge mới - roomCharge cũ
+            SELECT @additionalCharge = roomCharge - @originalCharge
             FROM Invoice
             WHERE invoiceID = @invoiceID;
+            
+            IF @additionalCharge < 0 SET @additionalCharge = 0;
         END
         
         -- Giải phóng phòng

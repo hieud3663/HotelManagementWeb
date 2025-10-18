@@ -19,35 +19,7 @@ namespace HotelManagement.Controllers
             return HttpContext.Session.GetString("UserID") != null;
         }
 
-        // Helper method: Tính phí theo nấc bậc thang cho giá GIỜ
-        private decimal CalculateHourlyFee(double totalMinutes, decimal hourlyRate)
-        {
-            if (totalMinutes <= 0) return 0;
-
-            var totalHours = Math.Ceiling(totalMinutes / 60.0);
-            decimal totalFee = 0;
-
-            // 2 giờ đầu: 100% giá
-            var first2Hours = Math.Min(totalHours, 2);
-            totalFee += (decimal)first2Hours * hourlyRate;
-
-            // Từ giờ 3-6: 80% giá
-            if (totalHours > 2)
-            {
-                var next4Hours = Math.Min(totalHours - 2, 4);
-                totalFee += (decimal)next4Hours * hourlyRate * 0.8m;
-            }
-
-            // Từ giờ thứ 7 trở đi: Chuyển sang tính theo ngày (nếu cần)
-            // Ở đây ta vẫn tính 80% cho đơn giản
-            if (totalHours > 6)
-            {
-                var remainingHours = totalHours - 6;
-                totalFee += (decimal)remainingHours * hourlyRate * 0.8m;
-            }
-
-            return totalFee;
-        }
+        // REMOVED: CalculateHourlyFee() - Không còn cần tính phí theo bậc thang
 
         public async Task<IActionResult> Index()
         {
@@ -86,222 +58,98 @@ namespace HotelManagement.Controllers
                 .ThenInclude(rus => rus.HotelService)
                 .FirstOrDefaultAsync(r => r.ReservationFormID == reservationFormID);
 
+            var existingInvoice = await _context.Invoices
+                .FirstOrDefaultAsync(i => i.ReservationFormID == reservationFormID);
+
             if (reservation == null)
             {
                 return NotFound();
             }
 
-            // **LOGIC MỚI**: Tính phí check-in sớm và check-out muộn theo quy định thực tế
-            var actualCheckInDate = reservation.HistoryCheckin?.CheckInDate ?? reservation.CheckInDate;
-            var expectedCheckInDate = reservation.CheckInDate;
-            var actualCheckOutDate = DateTime.Now;
-            var expectedCheckOutDate = reservation.CheckOutDate;
             
-            // Sử dụng giá đã lưu từ lúc đặt phòng
+            var actualCheckInDate = reservation.HistoryCheckin?.CheckInDate ?? reservation.CheckInDate;
+            var actualCheckOutDate = DateTime.Now; // Checkout thực tế = hiện tại
+            
             var unitPrice = reservation.UnitPrice;
             var priceUnit = reservation.PriceUnit;
 
-            // Lấy giá theo ngày để tính phí phụ thu
-            var dayPrice = await _context.Pricings
-                .Where(p => p.RoomCategoryID == reservation.Room!.RoomCategoryID && p.PriceUnit == "DAY")
-                .Select(p => p.Price)
-                .FirstOrDefaultAsync();
-
-            var hourPrice = await _context.Pricings
-                .Where(p => p.RoomCategoryID == reservation.Room!.RoomCategoryID && p.PriceUnit == "HOUR")
-                .Select(p => p.Price)
-                .FirstOrDefaultAsync();
-
-            if (dayPrice == 0)
-            {
-                dayPrice = unitPrice; // Fallback nếu không có giá theo ngày
-            }
-            if (hourPrice == 0)
-            {
-                hourPrice = unitPrice; // Fallback nếu không có giá theo giờ
-            }
-
-            decimal roomCharge = 0;
-            decimal timeUnits = 0;
-            decimal earlyCheckinFee = 0;
-            decimal lateCheckoutFee = 0;
-
-            // Bước 1: Tính tiền phòng CHUẨN (expectedCheckIn → expectedCheckOut)
+            var actualMinutes = (actualCheckOutDate - actualCheckInDate).TotalMinutes;
+            
+            decimal timeUnits;
             if (priceUnit == "DAY")
             {
-                var bookingMinutes = (expectedCheckOutDate - expectedCheckInDate).TotalMinutes;
-                timeUnits = (decimal)Math.Ceiling(bookingMinutes / 1440.0); // 1440 phút = 1 ngày
-                if (timeUnits < 1) timeUnits = 1;
-                roomCharge = unitPrice * timeUnits;
+                timeUnits = (decimal)Math.Ceiling(actualMinutes / 1440.0); // 1440 phút = 1 ngày
             }
             else // HOUR
             {
-                var bookingMinutes = (expectedCheckOutDate - expectedCheckInDate).TotalMinutes;
-                timeUnits = (decimal)Math.Ceiling(bookingMinutes / 60.0);
-                if (timeUnits < 1) timeUnits = 1;
-                roomCharge = unitPrice * timeUnits;
+                timeUnits = (decimal)Math.Ceiling(actualMinutes / 60.0);
             }
-
-            // Bước 2: Tính PHÍ CHECK-IN SỚM (nếu check-in thực tế < dự kiến)
-            if (actualCheckInDate < expectedCheckInDate)
-            {
-                var earlyMinutes = (expectedCheckInDate - actualCheckInDate).TotalMinutes;
-                int freeMinutes = (priceUnit == "HOUR") ? 30 : 60;
-
-                if (earlyMinutes > freeMinutes)
-                {
-                    var chargeableMinutes = earlyMinutes - freeMinutes;
-
-                    if (priceUnit == "HOUR")
-                    {
-                        // Giá GIỜ: Tính theo nấc bậc thang
-                        earlyCheckinFee = CalculateHourlyFee(chargeableMinutes, hourPrice);
-                    }
-                    else // DAY
-                    {
-                        // Giá NGÀY: Tính theo khung giờ (tích lũy)
-                        decimal totalFee = 0;
-                        DateTime currentTime = actualCheckInDate;
-                        DateTime endTime = expectedCheckInDate;
-
-                        while (currentTime < endTime)
-                        {
-                            int hour = currentTime.Hour;
-                            decimal surchargeRate = 0;
-
-                            // Xác định mức phí theo khung giờ
-                            if (hour >= 5 && hour < 9)
-                                surchargeRate = 0.5m;
-                            else if (hour >= 9 && hour < 14)
-                                surchargeRate = 0.3m;
-
-                            // Tính biên của khung giờ hiện tại
-                            DateTime bracketEnd;
-                            if (hour >= 5 && hour < 9)
-                                bracketEnd = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 9, 0, 0);
-                            else if (hour >= 9 && hour < 14)
-                                bracketEnd = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 14, 0, 0);
-                            else
-                                bracketEnd = currentTime.AddHours(1); // Vượt khung miễn phí
-
-                            // Tính phút trong khung giờ này
-                            DateTime actualBracketEnd = bracketEnd < endTime ? bracketEnd : endTime;
-                            var minutesInBracket = (actualBracketEnd - currentTime).TotalMinutes;
-
-                            // Cộng phí cho khung giờ này
-                            if (surchargeRate > 0)
-                            {
-                                totalFee += (decimal)(minutesInBracket / 1440.0) * dayPrice * surchargeRate;
-                            }
-
-                            currentTime = actualBracketEnd;
-                        }
-
-                        earlyCheckinFee = totalFee;
-                    }
-                }
-            }
-
-            // Bước 3: Tính PHÍ CHECK-OUT MUỘN (nếu check-out thực tế > dự kiến)
-            if (actualCheckOutDate > expectedCheckOutDate)
-            {
-                var lateMinutes = (actualCheckOutDate - expectedCheckOutDate).TotalMinutes;
-                int freeMinutes = (priceUnit == "HOUR") ? 30 : 60;
-
-                if (lateMinutes > freeMinutes)
-                {
-                    var chargeableMinutes = lateMinutes - freeMinutes;
-
-                    if (priceUnit == "HOUR")
-                    {
-                        // Giá GIỜ: Tính theo nấc bậc thang
-                        lateCheckoutFee = CalculateHourlyFee(chargeableMinutes, hourPrice);
-                    }
-                    else // DAY
-                    {
-                        // Giá NGÀY: Tính theo khung giờ (tích lũy)
-                        decimal totalFee = 0;
-                        DateTime currentTime = expectedCheckOutDate.AddMinutes(freeMinutes);
-                        DateTime endTime = actualCheckOutDate;
-
-                        while (currentTime < endTime)
-                        {
-                            int hour = currentTime.Hour;
-                            decimal surchargeRate = 0;
-
-                            // Xác định mức phí theo khung giờ
-                            if (hour >= 12 && hour < 15)
-                                surchargeRate = 0.3m;
-                            else if (hour >= 15 && hour < 18)
-                                surchargeRate = 0.5m;
-                            else if (hour >= 18)
-                                surchargeRate = 1.0m;
-
-                            // Tính biên của khung giờ hiện tại
-                            DateTime bracketEnd;
-                            if (hour >= 12 && hour < 15)
-                                bracketEnd = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 15, 0, 0);
-                            else if (hour >= 15 && hour < 18)
-                                bracketEnd = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 18, 0, 0);
-                            else if (hour >= 18)
-                                bracketEnd = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 23, 59, 59);
-                            else
-                                bracketEnd = currentTime.AddHours(1); // Vượt khung miễn phí
-
-                            // Tính phút trong khung giờ này
-                            DateTime actualBracketEnd = bracketEnd < endTime ? bracketEnd : endTime;
-                            var minutesInBracket = (actualBracketEnd - currentTime).TotalMinutes;
-
-                            // Cộng phí cho khung giờ này
-                            if (surchargeRate > 0)
-                            {
-                                totalFee += (decimal)(minutesInBracket / 1440.0) * dayPrice * surchargeRate;
-                            }
-
-                            currentTime = actualBracketEnd;
-                        }
-
-                        lateCheckoutFee = totalFee;
-                    }
-                }
-            }
-
-            var ActualDuration = 0.0;
-            if (priceUnit == "HOUR")
-                ActualDuration = Math.Ceiling((DateTime.Now - actualCheckInDate).TotalHours);
-            else
-                ActualDuration = Math.Ceiling((DateTime.Now - actualCheckInDate).TotalDays);
             
-            // Pass data for real-time calculation in view
+            if (timeUnits < 1) timeUnits = 1; 
+            
+            decimal roomCharge = unitPrice * timeUnits;
+
+            // ============================================================================
+            // TÍNH TIỀN CHO THANH TOÁN TRƯỚC 
+            // ============================================================================
+            var expectedCheckOutDate = reservation.CheckOutDate;
+            var expectedMinutes = (expectedCheckOutDate - actualCheckInDate).TotalMinutes;
+            
+            decimal expectedTimeUnits;
+            if (priceUnit == "DAY")
+            {
+                expectedTimeUnits = (decimal)Math.Ceiling(expectedMinutes / 1440.0);
+            }
+            else // HOUR
+            {
+                expectedTimeUnits = (decimal)Math.Ceiling(expectedMinutes / 60.0);
+            }
+            
+            if (expectedTimeUnits < 1) expectedTimeUnits = 1;
+            
+            decimal expectedRoomCharge = unitPrice * expectedTimeUnits;
+            
+            var servicesCharge = reservation.RoomUsageServices?.Sum(s => s.Quantity * s.UnitPrice) ?? 0;
+            
+            var expectedSubTotal = expectedRoomCharge + servicesCharge;
+            var expectedTaxAmount = expectedSubTotal * 0.1m;
+            var expectedTotalAmount = expectedSubTotal + expectedTaxAmount;
+            var expectedAmountDue = expectedTotalAmount - (decimal)reservation.RoomBookingDeposit;
+
+            var actualDuration = priceUnit == "HOUR" 
+                ? Math.Ceiling((actualCheckOutDate - actualCheckInDate).TotalHours)
+                : Math.Ceiling((actualCheckOutDate - actualCheckInDate).TotalDays);
+            
             ViewBag.UnitPrice = unitPrice;
             ViewBag.PriceUnit = priceUnit;
             ViewBag.TimeUnits = timeUnits;
-            ViewBag.DayPrice = dayPrice;
             ViewBag.ActualCheckInDate = actualCheckInDate;
-            ViewBag.ExpectedCheckInDate = expectedCheckInDate;
             ViewBag.ActualCheckOutDate = actualCheckOutDate;
-            ViewBag.ExpectedCheckOutDate = expectedCheckOutDate;
-            ViewBag.EarlyCheckinFee = earlyCheckinFee;
-            ViewBag.LateCheckoutFee = lateCheckoutFee;
-            ViewBag.ActualDuration = ActualDuration;
+            ViewBag.ActualDuration = actualDuration;
 
-            // Tính tiền dịch vụ
-            var servicesCharge = reservation.RoomUsageServices?.Sum(s => s.Quantity * s.UnitPrice) ?? 0;
-            var subTotal = roomCharge + servicesCharge + earlyCheckinFee + lateCheckoutFee;
+            var subTotal = roomCharge + servicesCharge; 
             var taxAmount = subTotal * 0.1m; // VAT 10%
             var totalAmount = subTotal + taxAmount;
             var amountDue = totalAmount - (decimal)reservation.RoomBookingDeposit;
 
+            // ViewBag cho CHECKOUT_THEN_PAY (tính đến hiện tại)
             ViewBag.RoomCharge = Math.Round(roomCharge, 0);
             ViewBag.ServiceCharge = Math.Round(servicesCharge, 0);
-            ViewBag.EarlyCheckinFee = Math.Round(earlyCheckinFee, 0);
-            ViewBag.LateCheckoutFee = Math.Round(lateCheckoutFee, 0);
             ViewBag.SubTotal = Math.Round(subTotal, 0);
             ViewBag.TaxAmount = Math.Round(taxAmount, 0);
             ViewBag.TotalAmount = Math.Round(totalAmount, 0);
             ViewBag.Deposit = Math.Round((decimal)reservation.RoomBookingDeposit, 0);
             ViewBag.AmountDue = Math.Round(amountDue, 0);
-
+            
+            // ViewBag cho PAY_THEN_CHECKOUT (tính theo dự kiến)
+            ViewBag.ExpectedRoomCharge = Math.Round(expectedRoomCharge, 0);
+            ViewBag.ExpectedTimeUnits = expectedTimeUnits;
+            ViewBag.ExpectedSubTotal = Math.Round(expectedSubTotal, 0);
+            ViewBag.ExpectedTaxAmount = Math.Round(expectedTaxAmount, 0);
+            ViewBag.ExpectedTotalAmount = Math.Round(expectedTotalAmount, 0);
+            ViewBag.ExpectedAmountDue = Math.Round(expectedAmountDue, 0);
+            
+            ViewBag.ExistingInvoice = existingInvoice;
             return View(reservation);
         }
 
@@ -316,15 +164,18 @@ namespace HotelManagement.Controllers
             try
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
-                
-                // Gọi SP để checkout và tạo invoice CHƯA THANH TOÁN
-                // SP tính tiền dựa trên thời gian THỰC TẾ (actual checkout)
+
+                // var existingInvoice = await _context.Invoices
+                //     .FirstOrDefaultAsync(i => i.ReservationFormID == reservationFormID && !i.IsPaid);
+
+                    // Gọi SP để checkout và tạo invoice CHƯA THANH TOÁN
                 var result = await _context.CreateInvoice_CheckoutThenPay(reservationFormID, employeeID!);
+
 
                 if (result != null && result.Status == "SUCCESS")
                 {
                     TempData["Success"] = "Trả phòng thành công! Vui lòng thanh toán hóa đơn.";
-                    return RedirectToAction("Payment", new { invoiceID = result.InvoiceID });
+                    return RedirectToAction("Details", "Invoice", new { id = result.InvoiceID });
                 }
                 else
                 {
@@ -383,7 +234,6 @@ namespace HotelManagement.Controllers
                 
                 // Gọi SP để xác nhận thanh toán
                 // SP sẽ cập nhật isPaid = 1, paymentDate, paymentMethod
-                // và chuyển trạng thái phòng từ UNAVAILABLE → AVAILABLE
                 var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID!);
 
                 if (result != null && result.Status == "PAYMENT_CONFIRMED")

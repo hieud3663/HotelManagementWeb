@@ -127,12 +127,12 @@
                                                 </button>
                                             </form>
                                             
-                                            @* Nút 2: Thanh toán trước (tính theo GIỜ DỰ KIẾN) *@
-                                            <button type="button" class="btn btn-success-modern btn-sm" 
+                                            @* Nút 2: Thanh toán trước (tính theo GIỜ DỰ KIẾN) *@ // vì tôi quá mệt tôi tôi tắt 
+                                            @* <button type="button" class="btn btn-success-modern btn-sm" 
                                                     data-bs-toggle="modal" 
                                                     data-bs-target="#paymentModal-@item.ReservationFormID">
                                                 <i class="fas fa-money-bill-wave"></i> Thanh toán trước
-                                            </button>
+                                            </button> *@
                                             
                                             @* Nút Dịch vụ *@
                                             <a asp-controller="RoomService" asp-action="Index" asp-route-reservationFormID="@item.ReservationFormID" 
@@ -140,19 +140,9 @@
                                                 <i class="fas fa-concierge-bell"></i> Dịch vụ
                                             </a>
                                         }
-                                        @* Luồng 2: Có invoice CHƯA THANH TOÁN (CheckoutThenPay) - Hiển thị nút Thanh toán *@
-                                        else if (invoice.IsPaid == false)
-                                        {
-                                            <a asp-action="Payment" asp-route-invoiceID="@invoice.InvoiceID" 
-                                               class="btn btn-danger-modern btn-sm">
-                                                <i class="fas fa-exclamation-circle"></i> Cần thanh toán
-                                            </a>
-                                            <span class="badge-modern badge-danger-modern">
-                                                @((invoice.TotalAmount ?? 0).ToString("N0", System.Globalization.CultureInfo.InvariantCulture)) VNĐ
-                                            </span>
-                                        }
-                                        @* Luồng 3: Đã thanh toán NHƯNG CHƯA CHECKOUT (PayThenCheckout) - Hiển thị nút Trả phòng thực tế *@
-                                        else if (invoice.IsPaid && !hasCheckout && invoice.CheckoutType == "PAY_THEN_CHECKOUT")
+                                        
+                                        @* Luồng 2: Đã thanh toán NHƯNG CHƯA CHECKOUT (PayThenCheckout) - Hiển thị nút Trả phòng thực tế *@
+                                        @* else if (!hasCheckout && invoice.CheckoutType == "PAY_THEN_CHECKOUT")
                                         {
                                             <form asp-action="ActualCheckout" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
@@ -163,10 +153,10 @@
                                                 </button>
                                             </form>
                                             <span class="badge-modern badge-success-modern">
-                                                <i class="fas fa-check"></i> Đã thanh toán
+                                                <i class="fas fa-check"></i> Đã thanh toán trước
                                             </span>
-                                        }
-                                        @* Luồng 4: Đã hoàn tất tất cả - Hiển thị badge hoàn tất *@
+                                        } *@
+                                        @* Luồng 3: Đã hoàn tất tất cả - Hiển thị badge hoàn tất *@
                                         else
                                         {
                                             <span class="badge-modern badge-success-modern">
@@ -185,12 +175,14 @@
 </div>
 
 @* Modals thanh toán trước - Đặt ngoài bảng để tránh xung đột DOM *@
+
 @foreach (var item in Model)
 {
     var invoice = item.ReservationForm?.Invoices?.FirstOrDefault();
     
     @* Chỉ hiển thị modal cho phòng chưa có invoice *@
-    @if (invoice == null)
+    @* @if (invoice == null) *@
+    @if (false) // Tắt thanh toán trước vì tôi quá mệt
     {
         <div class="modal fade" id="paymentModal-@item.ReservationFormID" tabindex="-1" aria-labelledby="paymentModalLabel-@item.ReservationFormID" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -252,6 +244,7 @@
         </div>
     }
 }
+
 
 <!-- Statistics -->
 @if (Model.Any())

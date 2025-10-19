@@ -221,3 +221,12 @@ D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6i5reqxq7z-qb
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\eb0l1zg7ka-7o5q5u3cn2.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\9vwf4ggh1t-e5z641soc9.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\jwqgy7x983-e5z641soc9.gz
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\ClosedXML.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\ClosedXML.Parser.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\DocumentFormat.OpenXml.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\DocumentFormat.OpenXml.Framework.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\ExcelNumberFormat.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\RBush.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\SixLabors.Fonts.dll
+D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\System.IO.Packaging.dll
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\ljiy8gfiz8-ynpjj03n3d.gz

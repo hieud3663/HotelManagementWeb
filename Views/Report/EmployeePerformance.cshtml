@@ -129,10 +129,13 @@
         <i class="fas fa-chart-bar me-2"></i>Bảng xếp hạng Nhân viên
     </div>
     <div class="card-body-modern">
+        <button id='btn-export-excel' class="btn btn-success-modern" style="margin-bottom: 1rem;">
+                <i class="fas fa-print"></i> Xuất Excel
+        </button>
         @if (ViewBag.EmployeeStats != null && ViewBag.EmployeeStats.Count > 0)
         {
             <div class="table-responsive">
-                <table class="table-modern mb-0 w-100">
+                <table class="table-modern mb-0 w-100" id="rankTable">
                     <thead>
                         <tr>
                             <th><i class="fas fa-medal"></i> Hạng</th>
@@ -220,9 +223,6 @@
     <a asp-action="Index" class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i> Quay lại
     </a>
-    <button onclick="window.print()" class="btn btn-info-modern">
-        <i class="fas fa-print"></i> In báo cáo
-    </button>
 </div>
 
 @section Scripts {
@@ -360,5 +360,9 @@
             }
         });
     }
+
+    // Xuất excel
+    exportExcel('rankTable', 'Báo cáo xếp hạng', 'Bao_cao_xep_hang', '@ViewBag.FromDate', '@ViewBag.ToDate');
+
 </script>
 }

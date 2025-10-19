@@ -25,17 +25,17 @@ namespace HotelManagement.Controllers
             // Thống kê nhanh cho dashboard báo cáo
             var today = DateTime.Today;
             var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-            
+
             // Doanh thu tháng này
             ViewBag.MonthlyRevenue = await _context.Invoices
                 .Where(i => i.InvoiceDate >= firstDayOfMonth)
                 .SumAsync(i => i.NetDue ?? 0);
-            
+
             // Check-in hôm nay
             ViewBag.TodayCheckIns = await _context.HistoryCheckins
                 .Where(h => h.CheckInDate.Date == today)
                 .CountAsync();
-            
+
             // Tổng hóa đơn tháng này
             ViewBag.MonthlyInvoices = await _context.Invoices
                 .Where(i => i.InvoiceDate >= firstDayOfMonth)
@@ -161,12 +161,25 @@ namespace HotelManagement.Controllers
             // Tính toán công suất
             var totalDays = (toDate.Value - fromDate.Value).Days + 1;
             var totalRoomDays = totalRooms * totalDays;
+
+            // Tính số ngày hoặc số giờ ở (tổng số lượng)
+            // Nếu có check-out thực tế thì dùng, nếu không thì dùng dự kiến từ ReservationForm
             var occupiedDays = checkIns.Sum(h =>
             {
-                var checkout = h.ReservationForm?.CheckOutDate ?? DateTime.Now;
-                var days = (checkout - h.CheckInDate).Days;
-                return days > 0 ? days : 1;
+                var actualCheckOut = _context.HistoryCheckOuts
+                    .Where(c => c.ReservationFormID == h.ReservationFormID)
+                    .Select(c => (DateTime?)c.CheckOutDate)  
+                    .FirstOrDefault();
+            
+                var checkOutDate = actualCheckOut ?? h.ReservationForm?.CheckOutDate ?? DateTime.Now;
+            
+                var duration = (checkOutDate - h.CheckInDate).TotalDays;
+            
+                // Nếu thời gian > 1 ngày, trả về số ngày (làm tròn lên)
+                // Nếu <= 1 ngày, tính theo giờ và chuyển sang ngày (làm tròn lên)
+                return duration > 1 ? Math.Ceiling(duration) : Math.Ceiling((checkOutDate - h.CheckInDate).TotalHours / 24);
             });
+            
 
             ViewBag.OccupancyRate = totalRoomDays > 0 ? (double)occupiedDays / totalRoomDays * 100 : 0;
             ViewBag.TotalCheckIns = checkIns.Count;
@@ -203,6 +216,50 @@ namespace HotelManagement.Controllers
 
             ViewBag.DailyOccupancy = dailyOccupancy;
 
+            // Tính số ngày hoặc số giờ ở (nói chung là số lượng)
+            // Nếu có check-out thì lấy check-out thực sự trong bảng HistoryCheckOuts
+            // Nếu không có thì lấy theo dự kiến từ ReservationForm
+
+            var listReservationForm = _context.ReservationForms
+                .Include(r => r.HistoryCheckOut)
+                .Include(r => r.HistoryCheckin)
+                .Include(r => r.Customer)
+                .Include(r => r.Room)
+                    .ThenInclude(rm => rm.RoomCategory)
+                .ToList();
+
+            var listResultReport = listReservationForm
+                .Where(rf => rf.HistoryCheckin != null && rf.Customer != null && rf.Room != null && rf.Room.RoomCategory != null)
+                .Select(rf =>
+            {
+                var actualCheckOut = rf.HistoryCheckOut?.CheckOutDate ?? (rf.CheckOutDate == DateTime.MinValue ? DateTime.Now : rf.CheckOutDate);
+                var minutes = (actualCheckOut - rf.HistoryCheckin.CheckInDate).TotalMinutes;
+                var unit = rf.PriceUnit ?? "DAY";
+                var quantity = 0;
+
+                if (unit == "HOUR")
+                {
+                    quantity = (int)Math.Ceiling(minutes / 60);
+                }
+                else // DAY
+                {
+                    quantity = (int)Math.Ceiling(minutes / (60 * 24));
+                }
+
+                return new
+                {
+                    ReservationFormID = rf.ReservationFormID,
+                    RoomID = rf.RoomID,
+                    RoomCategoryName = rf.Room?.RoomCategory?.RoomCategoryName,
+                    FullNameCustomer = rf.Customer!.FullName,
+                    CheckInDate = rf.HistoryCheckin!.CheckInDate,
+                    CheckOutDate = actualCheckOut,
+                    Quantity = quantity,
+                    Unit = unit == "HOUR" ? "Giờ" : "Ngày"
+                };
+            });
+
+            ViewBag.listResultReport = listResultReport;
             return View(checkIns);
         }
 
@@ -429,5 +486,7 @@ namespace HotelManagement.Controllers
                 }
             });
         }
+
+
     }
 }

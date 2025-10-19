@@ -4,6 +4,7 @@
     ViewData["Title"] = "Báo cáo Doanh thu";
 }
 
+
 <!-- Page Header -->
 <div class="page-header fade-in-up">
     <h1>
@@ -199,11 +200,16 @@
     <div class="card-header-modern">
         <i class="fas fa-list me-2"></i>Chi tiết Hóa đơn
     </div>
+
+
     <div class="card-body-modern">
+        <button id='btn-export-excel' class="btn btn-success-modern" style="margin-bottom: 1rem;">
+            <i class="fas fa-print"></i> Xuất Excel
+        </button>
         @if (Model.Any())
         {
             <div class="table-responsive">
-                <table class="table-modern mb-0 w-100">
+                <table class="table-modern mb-0 w-100" id="revenueTable">
                     <thead>
                         <tr>
                             <th>Mã HĐ</th>
@@ -212,6 +218,7 @@
                             <th>Loại phòng</th>
                             <th class="text-end">Tiền phòng</th>
                             <th class="text-end">Tiền DV</th>
+                            <th class="text-end">Thuế</th>
                             <th class="text-end">Tổng tiền</th>
                         </tr>
                     </thead>
@@ -225,6 +232,7 @@
                                 <td>@invoice.ReservationForm?.Room?.RoomCategory?.RoomCategoryName</td>
                                 <td class="text-end">@invoice.RoomCharge.ToString("N0") đ</td>
                                 <td class="text-end">@invoice.ServicesCharge.ToString("N0") đ</td>
+                                <td class="text-end">@((invoice.TaxRate * invoice.TotalDue ?? 0).ToString("N0")) đ</td>
                                 <td class="text-end">
                                     <strong class="text-success">@(invoice.NetDue?.ToString("N0")) đ</strong>
                                 </td>
@@ -236,6 +244,7 @@
                             <th colspan="4" class="text-end">TỔNG CỘNG:</th>
                             <th class="text-end">@Model.Sum(i => i.RoomCharge).ToString("N0") đ</th>
                             <th class="text-end">@Model.Sum(i => i.ServicesCharge).ToString("N0") đ</th>
+                            <th class="text-end">@Model.Sum(i => i.TaxRate * i.TotalDue ?? 0).ToString("N0") đ</th>
                             <th class="text-end">
                                 <strong class="text-success h5">@Model.Sum(i => i.NetDue ?? 0).ToString("N0") đ</strong>
                             </th>
@@ -258,12 +267,11 @@
     <a asp-action="Index" class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i> Quay lại
     </a>
-    <button onclick="window.print()" class="btn btn-info-modern">
-        <i class="fas fa-print"></i> In báo cáo
-    </button>
 </div>
 
 @section Scripts {
+
+
     <script>
         // 1. Daily Revenue Line Chart
         @if (ViewBag.DailyRevenue != null && ViewBag.DailyRevenue.Count > 0)
@@ -277,41 +285,41 @@
                         labels: dailyData.map(d => new Date(d.Date).toLocaleDateString('vi-VN')),
                     datasets: [{
                         label: 'Doanh thu (VNĐ)',
-                        data: dailyData.map(d => d.Revenue),
+                                data: dailyData.map(d => d.Revenue),
                     borderColor: '#4e73df',
                     backgroundColor: 'rgba(78, 115, 223, 0.1)',
                     fill: true,
                     tension: 0.4,
                     borderWidth: 2
-                    }]
-                },
+                            }]
+                        },
                     options: {
                         responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
                         legend: {
                         display: false
-                        },
+                                },
                     tooltip: {
                         callbacks: {
                         label: function(context) {
-                                    return 'Doanh thu: ' + context.parsed.y.toLocaleString('vi-VN') + ' đ';
+                                            return 'Doanh thu: ' + context.parsed.y.toLocaleString('vi-VN') + ' đ';
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                    },
+                            },
                     scales: {
                         y: {
                         beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                                    return value.toLocaleString('vi-VN') + ' đ';
+                                            return value.toLocaleString('vi-VN') + ' đ';
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
-            });
+                    });
                 </text>
         }
 
@@ -327,7 +335,7 @@
                         labels: roomTypeData.map(r => r.RoomType),
                     datasets: [{
                         label: 'Doanh thu',
-                        data: roomTypeData.map(r => r.Revenue),
+                                data: roomTypeData.map(r => r.Revenue),
                     backgroundColor: [
                     '#4e73df',
                     '#1cc88a',
@@ -338,34 +346,34 @@
                     ],
                     borderWidth: 2,
                     borderColor: '#fff'
-                    }]
-                },
+                            }]
+                        },
                     options: {
                         responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
                         legend: {
                         position: 'right'
-                        },
+                                },
                     tooltip: {
                         callbacks: {
                         label: function(context) {
-                                    const label = context.label || '';
+                                            const label = context.label || '';
                     const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
                     const percentage = ((value / total) * 100).toFixed(1);
                     return label + ': ' + value.toLocaleString('vi-VN') + ' đ (' + percentage + '%)';
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
-            });
+                    });
                 </text>
         }
 
-    // 3. Revenue Comparison Bar Chart (Room vs Service)
-    const ctxComparison = document.getElementById('revenueComparisonChart').getContext('2d');
+        // 3. Revenue Comparison Bar Chart (Room vs Service)
+        const ctxComparison = document.getElementById('revenueComparisonChart').getContext('2d');
         new Chart(ctxComparison, {
             type: 'bar',
             data: {
@@ -405,5 +413,9 @@
                 }
             }
         });
-    </script>
+
+        // Xuất excel
+        exportExcel('revenueTable', 'Báo cáo doanh thu', 'Bao_cao_doanh_thu', '@ViewBag.FromDate', '@ViewBag.ToDate');
+        
+        </script>
 }

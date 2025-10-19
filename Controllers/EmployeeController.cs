@@ -59,14 +59,34 @@ namespace HotelManagement.Controllers
 
             if (ModelState.IsValid)
             {
-                // Sử dụng fn_GenerateID từ database
                 employee.EmployeeID = await _context.GenerateID("EMP-", "Employee");
                 employee.IsActivate = "ACTIVATE";
 
-                _context.Add(employee);
-                await _context.SaveChangesAsync();
-                TempData["Success"] = "Thêm nhân viên thành công!";
-                return RedirectToAction(nameof(Index));
+                try
+                {
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "EXEC sp_InsertEmployee @p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8",
+                        employee.EmployeeID,
+                        employee.FullName,
+                        employee.PhoneNumber,
+                        employee.Email,
+                        employee.Address,
+                        employee.Gender,
+                        employee.IdCardNumber,
+                        employee.Dob,
+                        employee.Position
+                    );
+                    TempData["Success"] = "Thêm nhân viên thành công!";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException ex)
+                {
+                    ModelState.AddModelError("", ex.InnerException?.Message ?? ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", ex.Message);
+                }
             }
             return View(employee);
         }
@@ -94,18 +114,30 @@ namespace HotelManagement.Controllers
             {
                 try
                 {
-                    _context.Update(employee);
-                    await _context.SaveChangesAsync();
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "EXEC sp_UpdateEmployee @p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9",
+                        employee.EmployeeID,
+                        employee.FullName,
+                        employee.PhoneNumber,
+                        employee.Email,
+                        employee.Address,
+                        employee.Gender,
+                        employee.IdCardNumber,
+                        employee.Dob,
+                        employee.Position,
+                        employee.IsActivate
+                    );
                     TempData["Success"] = "Cập nhật nhân viên thành công!";
+                    return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateException ex)
                 {
-                    if (!EmployeeExists(employee.EmployeeID))
-                        return NotFound();
-                    else
-                        throw;
+                    ModelState.AddModelError("", ex.InnerException?.Message ?? ex.Message);
                 }
-                return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", ex.Message);
+                }
             }
             return View(employee);
         }

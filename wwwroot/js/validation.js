@@ -45,8 +45,8 @@ function clearError(elementId) {
 }
 
 // Event listener for form submission
-function initCustomerFormValidation() {
-    const form = document.getElementById("customerForm");
+function initFormValidattion(id_form) {
+    const form = document.getElementById(id_form);
     if (form) {
         form.addEventListener("submit", function (event) {
             let isValid = true;
@@ -122,4 +122,10 @@ function validateReservationForm(event) {
     if (!isValid) {
         event.preventDefault();
     }
+}
+
+function initEmployeeFormValidation() { 
+
+    
+
 }

@@ -2,19 +2,11 @@
 
 @{
     ViewData["Title"] = "Chi tiết đặt phòng";
+    var unit = Model.PriceUnit;
+    var duration = (unit == "DAY") ? (Model.CheckOutDate - Model.CheckInDate).TotalDays : (Model.CheckOutDate - Model.CheckInDate).TotalHours;
 }
 
 <div class="container-modern">
-    <div class="header-modern">
-        <h2><i class="fas fa-file-alt me-2"></i>Chi tiết đặt phòng</h2>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb-modern">
-                <li class="breadcrumb-item-modern"><a asp-controller="Dashboard" asp-action="Index">Trang chủ</a></li>
-                <li class="breadcrumb-item-modern"><a asp-controller="Reservation" asp-action="Index">Đặt phòng</a></li>
-                <li class="breadcrumb-item-modern active">Chi tiết</li>
-            </ol>
-        </nav>
-    </div>
 
     <div class="row g-4">
         <!-- Thông tin đặt phòng -->
@@ -32,13 +24,13 @@
                         <dd class="col-sm-7">@Model.ReservationDate.ToString("dd/MM/yyyy HH:mm")</dd>
 
                         <dt class="col-sm-5">Ngày check-in:</dt>
-                        <dd class="col-sm-7">@Model.CheckInDate.ToString("dd/MM/yyyy")</dd>
+                        <dd class="col-sm-7">@Model.CheckInDate.ToString("dd/MM/yyyy HH:mm")</dd>
 
                         <dt class="col-sm-5">Ngày check-out:</dt>
-                        <dd class="col-sm-7">@Model.CheckOutDate.ToString("dd/MM/yyyy")</dd>
+                        <dd class="col-sm-7">@Model.CheckOutDate.ToString("dd/MM/yyyy HH:mm")</dd>
 
-                        <dt class="col-sm-5">Số ngày ở:</dt>
-                        <dd class="col-sm-7">@((Model.CheckOutDate - Model.CheckInDate).Days) ngày</dd>
+                        <dt class="col-sm-5">Thời gian ở:</dt>
+                        <dd class="col-sm-7">@duration.ToString("N0") @(unit == "DAY" ? "ngày" : "giờ")</dd>
 
                         <dt class="col-sm-5">Tiền đặt cọc:</dt>
                         <dd class="col-sm-7"><strong class="text-success">@Model.RoomBookingDeposit.ToString("N0") đ</strong></dd>

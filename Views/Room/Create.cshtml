@@ -23,7 +23,15 @@
             <div class="card-body-modern">
                 <form asp-action="Create" method="post">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-                    
+
+                    <div class="mb-4">
+                        <label asp-for="RoomID" class="form-label-modern">
+                            <i class="fas fa-hashtag"></i> Số phòng <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="RoomID" class="form-control form-control-modern" required />
+                        <span asp-validation-for="RoomID" class="text-danger"></span>
+                    </div>
+
                     <div class="mb-4">
                         <label asp-for="RoomCategoryID" class="form-label-modern">
                             <i class="fas fa-layer-group"></i> Loại Phòng <span class="text-danger">*</span>

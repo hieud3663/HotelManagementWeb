@@ -97,12 +97,25 @@ namespace HotelManagement.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("RoomCategoryID")] Room room)
+        public async Task<IActionResult> Create([Bind("RoomID, RoomCategoryID")] Room room)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
             if (ModelState.IsValid)
             {
+
+                //Kiểm tra mã phòng đã tồn tại
+                var existingRoom = await _context.Rooms.FindAsync(room.RoomID);
+                if (existingRoom != null)
+                {
+                    TempData["Error"] = "Mã phòng đã tồn tại! Vui lòng nhập mã khác.";
+                    ViewData["RoomCategoryID"] = new SelectList(
+                        await _context.RoomCategories.Where(rc => rc.IsActivate == "ACTIVATE").ToListAsync(),
+                        "RoomCategoryID", "RoomCategoryName", room.RoomCategoryID);
+                    return View(room);
+                }
+
+
                 // Lấy thông tin loại phòng để tạo mã phòng
                 var roomCategory = await _context.RoomCategories.FindAsync(room.RoomCategoryID);
                 if (roomCategory == null)
@@ -114,14 +127,6 @@ namespace HotelManagement.Controllers
                     return View(room);
                 }
 
-                var prefix = "R";
-
-                if (roomCategory.RoomCategoryName.Contains("VIP", StringComparison.OrdinalIgnoreCase))
-                    prefix = "V";
-                else if (roomCategory.RoomCategoryName.Contains("Thường", StringComparison.OrdinalIgnoreCase))
-                    prefix = "T";
-
-                room.RoomID = await _context.GenerateID(prefix, "Room", 4);
                 room.IsActivate = "ACTIVATE";
                 room.DateOfCreation = DateTime.Now;
                 room.RoomStatus = "AVAILABLE";

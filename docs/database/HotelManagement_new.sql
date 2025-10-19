@@ -457,6 +457,156 @@ BEGIN
 END;
 GO
 
+--=================
+--== Trigger kiểm tra thông tin nhân viên trùng lặp
+CREATE OR ALTER TRIGGER TR_Employee_CheckDuplicate
+ON Employee
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Kiểm tra trùng SĐT
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN Employee e ON i.phoneNumber = e.phoneNumber
+    )
+    BEGIN
+        RAISERROR(N'Số điện thoại đã tồn tại.', 16, 1);
+        RETURN;
+    END
+
+    -- Kiểm tra trùng CCCD
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN Employee e ON i.idCardNumber = e.idCardNumber
+    )
+    BEGIN
+        RAISERROR(N'Số CCCD đã tồn tại.', 16, 1);
+        RETURN;
+    END
+
+    -- Kiểm tra trùng Email (nếu muốn)
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN Employee e ON i.email = e.email
+    )
+    BEGIN
+        RAISERROR(N'Email đã tồn tại.', 16, 1);
+        RETURN;
+    END
+
+    -- Nếu hợp lệ, thực hiện INSERT
+    INSERT INTO Employee (employeeID, fullName, phoneNumber, email, address, gender, idCardNumber, dob, position, isActivate)
+    SELECT employeeID, fullName, phoneNumber, email, address, gender, idCardNumber, dob, position, isActivate
+    FROM inserted;
+END;
+GO
+
+--==============================
+--== Trigger kiểm tra thông tin nhân viên trùng lặp khi UPDATE
+CREATE OR ALTER TRIGGER TR_Employee_CheckDuplicate_Update
+ON Employee
+INSTEAD OF UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Kiểm tra trùng SĐT (trừ chính bản ghi đang update)
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN Employee e ON i.phoneNumber = e.phoneNumber
+        WHERE e.employeeID <> i.employeeID
+    )
+    BEGIN
+        RAISERROR(N'Số điện thoại đã tồn tại.', 16, 1);
+        RETURN;
+    END
+
+    -- Kiểm tra trùng CCCD
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN Employee e ON i.idCardNumber = e.idCardNumber
+        WHERE e.employeeID <> i.employeeID
+    )
+    BEGIN
+        RAISERROR(N'Số CCCD đã tồn tại.', 16, 1);
+        RETURN;
+    END
+
+    -- Kiểm tra trùng Email (nếu muốn)
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN Employee e ON i.email = e.email
+        WHERE e.employeeID <> i.employeeID
+    )
+    BEGIN
+        RAISERROR(N'Email đã tồn tại.', 16, 1);
+        RETURN;
+    END
+
+    -- Nếu hợp lệ, thực hiện UPDATE
+    UPDATE Employee
+    SET fullName = i.fullName,
+        phoneNumber = i.phoneNumber,
+        email = i.email,
+        address = i.address,
+        gender = i.gender,
+        idCardNumber = i.idCardNumber,
+        dob = i.dob,
+        position = i.position,
+        isActivate = i.isActivate
+    FROM inserted i
+    WHERE Employee.employeeID = i.employeeID;
+END;
+GO
+
+--==sp thêm employee
+CREATE OR ALTER PROCEDURE sp_InsertEmployee
+    @employeeID NVARCHAR(15),
+    @fullName NVARCHAR(50),
+    @phoneNumber NVARCHAR(10),
+    @email NVARCHAR(50),
+    @address NVARCHAR(100),
+    @gender NVARCHAR(6),
+    @idCardNumber NVARCHAR(12),
+    @dob DATE,
+    @position NVARCHAR(15)
+AS
+BEGIN
+    INSERT INTO Employee (employeeID, fullName, phoneNumber, email, address, gender, idCardNumber, dob, position, isActivate)
+    VALUES (@employeeID, @fullName, @phoneNumber, @email, @address, @gender, @idCardNumber, @dob, @position, 'ACTIVATE');
+END;
+GO
+
+--== sp sửa employee
+CREATE OR ALTER PROCEDURE sp_UpdateEmployee
+    @employeeID NVARCHAR(15),
+    @fullName NVARCHAR(50),
+    @phoneNumber NVARCHAR(10),
+    @email NVARCHAR(50),
+    @address NVARCHAR(100),
+    @gender NVARCHAR(6),
+    @idCardNumber NVARCHAR(12),
+    @dob DATE,
+    @position NVARCHAR(15),
+    @isActivate NVARCHAR(10)
+AS
+BEGIN
+    UPDATE Employee
+    SET fullName = @fullName,
+        phoneNumber = @phoneNumber,
+        email = @email,
+        address = @address,
+        gender = @gender,
+        idCardNumber = @idCardNumber,
+        dob = @dob,
+        position = @position,
+        isActivate = @isActivate
+    WHERE employeeID = @employeeID;
+END;
+GO
+
 -- SELECT dbo.fn_GenerateID('EMP-', 'Employee', 'employeeID', 6);
 -- GO
 

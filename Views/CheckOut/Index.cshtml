@@ -47,14 +47,17 @@
                             <th><i class="fas fa-tag"></i> Loại phòng</th>
                             <th><i class="fas fa-sign-in-alt"></i> Check-in</th>
                             <th><i class="fas fa-calendar-times"></i> Check-out DK</th>
-                            <th><i class="fas fa-hourglass-half"></i> Số ngày</th>
+                            <th><i class="fas fa-hourglass-half"></i> Thời gian</th>
                             <th><i class="fas fa-cog"></i> Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model)
                         {
-                            var daysDiff = (DateTime.Now - item.CheckInDate).Days;
+                            var daysDiff = Math.Ceiling((DateTime.Now - item.CheckInDate).TotalHours);
+
+                            var unit = item.ReservationForm!.PriceUnit;
+                            var duration = (unit == "HOUR") ? daysDiff : daysDiff * 24;
                             var isOverdue = DateTime.Now > item.ReservationForm!.CheckOutDate;
                             
                             // Kiểm tra trạng thái Invoice và Checkout
@@ -103,12 +106,12 @@
                                 </td>
                                 <td>
                                     <span class="badge-modern badge-info-modern">
-                                        <i class="fas fa-calendar-day"></i> @daysDiff ngày
+                                        <i class="fas fa-calendar-day"></i> @daysDiff @(unit == "HOUR" ? "giờ" : "ngày")
                                     </span>
                                 </td>
                                 <td>
                                     <div class="d-flex gap-2 flex-wrap">
-                                        @* Nút Xem chi tiết - Luôn hiển thị *@
+                                   
                                         <a asp-action="Details" asp-route-reservationFormID="@item.ReservationFormID" 
                                            class="btn btn-info-modern btn-sm" title="Xem chi tiết và tính tiền">
                                             <i class="fas fa-eye"></i> Chi tiết

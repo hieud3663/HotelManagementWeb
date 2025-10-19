@@ -168,11 +168,10 @@ namespace HotelManagement.Controllers
                 // var existingInvoice = await _context.Invoices
                 //     .FirstOrDefaultAsync(i => i.ReservationFormID == reservationFormID && !i.IsPaid);
 
-                    // Gọi SP để checkout và tạo invoice CHƯA THANH TOÁN
                 var result = await _context.CreateInvoice_CheckoutThenPay(reservationFormID, employeeID!);
 
 
-                if (result != null && result.Status == "SUCCESS")
+                if (result != null && result.Status == "CHECKOUT_THEN_PAY")
                 {
                     TempData["Success"] = "Trả phòng thành công! Vui lòng thanh toán hóa đơn.";
                     return RedirectToAction("Details", "Invoice", new { id = result.InvoiceID });

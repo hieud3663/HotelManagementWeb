@@ -21,7 +21,7 @@
                 <i class="fas fa-user-tie me-2"></i>Thông tin Nhân viên
             </div>
             <div class="card-body-modern">
-                <form asp-action="Create" method="post">
+                <form asp-action="Create" method="post" id="employeeForm">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
                     
                     <div class="row">
@@ -47,6 +47,7 @@
                             <label asp-for="PhoneNumber" class="form-label-modern"></label>
                             <input asp-for="PhoneNumber" class="form-control-modern" placeholder="Nhập số điện thoại" />
                             <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                            <span id="phoneNumberError" class="text-danger" style="display: none;"></span>
                         </div>
 
                         <div class="col-md-6 mb-3">
@@ -61,12 +62,14 @@
                             <label asp-for="IdCardNumber" class="form-label-modern"></label>
                             <input asp-for="IdCardNumber" class="form-control-modern" placeholder="Nhập số CMND/CCCD" />
                             <span asp-validation-for="IdCardNumber" class="text-danger"></span>
+                            <span id="cccdError" class="text-danger" style="display:none;"></span>
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label asp-for="Dob" class="form-label-modern"></label>
                             <input asp-for="Dob" type="date" class="form-control-modern" />
                             <span asp-validation-for="Dob" class="text-danger"></span>
+                            <span id="dobError" class="text-danger" style="display:none;"></span>
                         </div>
                     </div>
 
@@ -96,7 +99,7 @@
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-success-modern">
+                        <button type="submit" class="btn btn-success-modern" onclick="initFormValidattion('employeeForm');">
                             <i class="fas fa-save"></i> Lưu nhân viên
                         </button>
                         <a asp-action="Index" class="btn btn-secondary">

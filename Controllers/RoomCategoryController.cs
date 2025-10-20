@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HotelManagement.Data;
 using HotelManagement.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HotelManagement.Controllers
 {
-    public class RoomCategoryController : Controller
+    [Authorize(Roles = "ADMIN,MANAGER")]
+    public class RoomCategoryController : BaseController
     {
         private readonly HotelManagementContext _context;
 

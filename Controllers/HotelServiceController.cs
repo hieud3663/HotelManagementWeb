@@ -6,7 +6,7 @@ using HotelManagement.Models;
 
 namespace HotelManagement.Controllers
 {
-    public class HotelServiceController : Controller
+    public class HotelServiceController : BaseController
     {
         private readonly HotelManagementContext _context;
 

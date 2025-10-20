@@ -4,7 +4,7 @@ using HotelManagement.Data;
 
 namespace HotelManagement.Controllers
 {
-    public class ServiceStatusController : Controller
+    public class ServiceStatusController : BaseController
     {
         private readonly HotelManagementContext _context;
         private readonly ILogger<ServiceStatusController> _logger;

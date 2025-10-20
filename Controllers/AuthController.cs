@@ -6,7 +6,7 @@ using BCrypt.Net;
 
 namespace HotelManagement.Controllers
 {
-    public class AuthController : Controller
+    public class AuthController : BaseController
     {
         private readonly HotelManagementContext _context;
 

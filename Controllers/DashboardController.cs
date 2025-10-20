@@ -4,7 +4,7 @@ using HotelManagement.Data;
 
 namespace HotelManagement.Controllers
 {
-    public class DashboardController : Controller
+    public class DashboardController : BaseController
     {
         private readonly HotelManagementContext _context;
 

@@ -5,7 +5,7 @@ using HotelManagement.Models;
 
 namespace HotelManagement.Controllers
 {
-    public class CheckOutController : Controller
+    public class CheckOutController : BaseController
     {
         private readonly HotelManagementContext _context;
 

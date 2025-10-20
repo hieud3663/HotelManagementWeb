@@ -51,7 +51,7 @@ namespace HotelManagement.Models
         public string PriceUnit { get; set; } = "DAY";
 
         [Required]
-        [Column("unitPrice")]
+        [Column("unitPrice", TypeName = "decimal(18, 2)")]
         [Display(Name = "Đơn giá")]
         [Range(0, double.MaxValue, ErrorMessage = "Đơn giá phải lớn hơn hoặc bằng 0")]
         public decimal UnitPrice { get; set; }

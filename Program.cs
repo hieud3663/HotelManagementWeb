@@ -19,6 +19,22 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Add Authentication and Authorization
+builder.Services.AddAuthentication("CookieAuth")
+    .AddCookie("CookieAuth", options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.AccessDeniedPath = "/Auth/AccessDenied";
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("EMPLOYEE", policy => policy.RequireRole("EMPLOYEE"));
+    options.AddPolicy("MANAGER", policy => policy.RequireRole("MANAGER"));
+    options.AddPolicy("ADMIN", policy => policy.RequireRole("ADMIN"));
+});
+
+
 builder.Services.AddHttpContextAccessor();
 
 // ✅ THÊM BACKGROUND SERVICE TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI PHÒNG
@@ -40,6 +56,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();

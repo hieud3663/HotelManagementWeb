@@ -378,7 +378,7 @@ using HotelManagement.Data;
 
 namespace HotelManagement.Controllers
 {
-    public class ConfirmationReceiptController : Controller
+    public class ConfirmationReceiptController : BaseController
     {
         private readonly HotelManagementContext _context;
         

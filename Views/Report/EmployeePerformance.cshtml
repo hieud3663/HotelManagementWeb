@@ -16,14 +16,40 @@
 <!-- Filter Form -->
 <div class="card-modern fade-in-up mb-4">
     <div class="card-body-modern">
+        <!-- Quick Filter Buttons -->
+        <div class="mb-3">
+            <label class="form-label-modern mb-2">Lọc nhanh:</label>
+            <div class="btn-group flex-wrap gap-2" role="group">
+                <a href="?preset=today" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-calendar-day"></i> Hôm nay
+                </a>
+                <a href="?preset=yesterday" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-calendar-minus"></i> Hôm qua
+                </a>
+                <a href="?preset=7days" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-calendar-week"></i> 7 ngày
+                </a>
+                <a href="?preset=30days" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-calendar-alt"></i> 30 ngày
+                </a>
+                <a href="?preset=30daysago" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-history"></i> 30 ngày trước
+                </a>
+                <a href="?preset=3months" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-calendar"></i> 3 tháng trước
+                </a>
+            </div>
+        </div>
+
+        <!-- Custom Date Range -->
         <form method="get" class="row g-3">
             <div class="col-md-4">
                 <label class="form-label-modern">Từ ngày</label>
-                <input type="date" name="fromDate" class="form-control-modern" value="@ViewBag.FromDate" />
+                <input type="date" name="fromDate" id="fromDate" class="form-control-modern" value="@ViewBag.FromDate" />
             </div>
             <div class="col-md-4">
                 <label class="form-label-modern">Đến ngày</label>
-                <input type="date" name="toDate" class="form-control-modern" value="@ViewBag.ToDate" />
+                <input type="date" name="toDate" id="toDate" class="form-control-modern" value="@ViewBag.ToDate" />
             </div>
             <div class="col-md-4 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary-modern w-100">

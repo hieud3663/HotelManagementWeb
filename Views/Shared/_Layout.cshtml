@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
+<body class="@(Context.Session.GetString("Role") == "EMPLOYEE" ? "employee-theme" : "")">
     <header>
         <nav class="navbar navbar-expand-lg navbar-toggleable-lg navbar-custom">
             <div class="container-fluid px-4">
@@ -63,6 +63,11 @@
                                         </a></li>
                                         <li><a class="dropdown-item" asp-controller="HotelService" asp-action="Index">
                                             <i class="fas fa-concierge-bell"></i> Dịch vụ khách sạn
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><h6 class="dropdown-header"><i class="fas fa-user-cog"></i> Tài khoản</h6></li>
+                                        <li><a class="dropdown-item" asp-controller="ReceptionAccount" asp-action="Index">
+                                            <i class="fas fa-user-shield"></i> Tài khoản Lễ tân
                                         </a></li>
                                     </ul>
                                 </li>

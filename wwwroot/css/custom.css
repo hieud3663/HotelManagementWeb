@@ -440,3 +440,41 @@ body {
     margin-top: 3rem;
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
 }
+
+/* ===================================
+   EMPLOYEE THEME (Màu xanh lá - CHỈ primary)
+   =================================== */
+body.employee-theme {
+    --primary-color: #10B981;
+    --primary-dark: #059669;
+    --primary-light: #34D399;
+}
+
+/* CHỈ đổi màu Navbar */
+body.employee-theme .navbar-custom {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+}
+
+/* CHỈ đổi màu button primary */
+body.employee-theme .btn-primary-modern {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+}
+
+body.employee-theme .btn-primary-modern:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+}
+
+/* CHỈ đổi màu stats-card primary */
+body.employee-theme .stats-card.primary {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+}
+
+body.employee-theme .stats-icon.primary {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #10B981 !important;
+}
+
+/* CHỈ đổi text-primary */
+body.employee-theme .text-primary {
+    color: #10B981 !important;
+}

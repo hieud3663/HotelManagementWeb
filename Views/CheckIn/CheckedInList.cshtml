@@ -136,6 +136,10 @@
                                            class="btn btn-sm btn-info-modern" title="Dịch vụ">
                                             <i class="fas fa-concierge-bell"></i>
                                         </a>
+                                        <a asp-controller="ConfirmationReceipt" asp-action="PrintCheckIn" asp-route-reservationId="@item.ReservationFormID" 
+                                           class="btn btn-sm btn-warning-modern" title="In phiếu check-in" target="_blank">
+                                            <i class="fas fa-receipt"></i>
+                                        </a>
                                         <a href="@Url.Action("Details", "CheckOut", new { reservationFormID = item.ReservationFormID })" 
                                            class="btn btn-sm btn-success-modern" title="Check-out">
                                             <i class="fas fa-sign-out-alt"></i>

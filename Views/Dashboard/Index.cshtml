@@ -51,42 +51,45 @@
     </div>
 </div>
 
-<!-- Secondary Statistics -->
-<div class="row g-4 mb-4">
-    <div class="col-lg-4">
-        <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
-            <div class="card-body-modern text-center">
-                <div class="stats-icon primary mx-auto">
-                    <i class="fas fa-users"></i>
+@if ("MANAGER,ADMIN".Contains(Context.Session.GetString("Role"))){
+
+    <!-- Secondary Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="card-modern fade-in-up" style="animation-delay: 0.5s">
+                <div class="card-body-modern text-center">
+                    <div class="stats-icon primary mx-auto">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stats-title mt-3">TỔNG KHÁCH HÀNG</div>
+                    <div class="stats-value">@ViewBag.TotalCustomers</div>
                 </div>
-                <div class="stats-title mt-3">TỔNG KHÁCH HÀNG</div>
-                <div class="stats-value">@ViewBag.TotalCustomers</div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
+                <div class="card-body-modern text-center">
+                    <div class="stats-icon info mx-auto">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="stats-title mt-3">TỔNG NHÂN VIÊN</div>
+                    <div class="stats-value">@ViewBag.TotalEmployees</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
+                <div class="card-body-modern text-center">
+                    <div class="stats-icon danger mx-auto">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <div class="stats-title mt-3">DOANH THU THÁNG NÀY</div>
+                    <div class="stats-value text-success">@ViewBag.MonthlyRevenue.ToString("N0") VNĐ</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <div class="card-modern fade-in-up" style="animation-delay: 0.6s">
-            <div class="card-body-modern text-center">
-                <div class="stats-icon info mx-auto">
-                    <i class="fas fa-user-tie"></i>
-                </div>
-                <div class="stats-title mt-3">TỔNG NHÂN VIÊN</div>
-                <div class="stats-value">@ViewBag.TotalEmployees</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card-modern fade-in-up" style="animation-delay: 0.7s">
-            <div class="card-body-modern text-center">
-                <div class="stats-icon danger mx-auto">
-                    <i class="fas fa-money-bill-wave"></i>
-                </div>
-                <div class="stats-title mt-3">DOANH THU THÁNG NÀY</div>
-                <div class="stats-value text-success">@ViewBag.MonthlyRevenue.ToString("N0") VNĐ</div>
-            </div>
-        </div>
-    </div>
-</div>
+}
 
 <!-- Quick Actions -->
 <div class="card-modern fade-in-up" style="animation-delay: 0.8s">

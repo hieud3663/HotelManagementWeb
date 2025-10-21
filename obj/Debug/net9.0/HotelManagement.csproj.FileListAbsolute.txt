@@ -216,7 +216,6 @@ D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\HotelManagement.genrunti
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\ref\HotelManagement.dll
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\gwnyns4wsv-rsshgcx4zt.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\HotelManagement.sourcelink.json
-D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6i5reqxq7z-qb4sy67sr4.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\eb0l1zg7ka-7o5q5u3cn2.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\9vwf4ggh1t-e5z641soc9.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\jwqgy7x983-e5z641soc9.gz
@@ -230,3 +229,4 @@ D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\SixLabors.Fonts.dll
 D:\C#\Lập trình Web\HotelManagement\bin\Debug\net9.0\System.IO.Packaging.dll
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\ljiy8gfiz8-ynpjj03n3d.gz
 D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6es52sxz1y-1w8e0imzna.gz
+D:\C#\Lập trình Web\HotelManagement\obj\Debug\net9.0\compressed\6i5reqxq7z-zmb3pzcmr3.gz

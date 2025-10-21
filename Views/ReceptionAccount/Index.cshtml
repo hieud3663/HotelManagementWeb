@@ -1,0 +1,83 @@
+@model IEnumerable<HotelManagement.Models.User>
+
+@{
+    ViewData["Title"] = "Quản lý tài khoản Lễ tân";
+}
+
+<div class="page-header fade-in-up">
+    <h1><i class="fas fa-user-cog"></i> Quản lý tài khoản Lễ tân</h1>
+    <p>Chỉ MANAGER/ADMIN có quyền truy cập</p>
+</div>
+
+<div class="mb-3">
+    <a asp-action="Create" class="btn btn-primary-modern">
+        <i class="fas fa-plus"></i> Tạo tài khoản mới
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="card-modern">
+    <div class="card-header-modern">
+        <i class="fas fa-list me-2"></i>Danh sách tài khoản lễ tân
+    </div>
+    <div class="card-body-modern">
+        <div class="table-responsive">
+            <table class="table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Username</th>
+                        <th>Nhân viên</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var u in Model)
+                {
+                    <tr>
+                        <td>@u.UserID</td>
+                        <td>@u.Username</td>
+                        <td>@u.Employee?.FullName (@u.EmployeeID)</td>
+                        <td>
+                            @if (u.IsActivate == "ACTIVATE")
+                            {
+                                <span class="badge-modern badge-success-modern">Đang hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="badge-modern badge-danger-modern">Đã khóa</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <form asp-action="Toggle" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@u.UserID" />
+                                <button type="submit" class="btn btn-warning-modern btn-sm">
+                                    <i class="fas fa-power-off"></i> @((u.IsActivate=="ACTIVATE")?"Khóa":"Mở khóa")
+                                </button>
+                            </form>
+                            <form asp-action="ResetPassword" method="post" class="d-inline" onsubmit="return confirm('Đặt lại mật khẩu về 123456?');">
+                                <input type="hidden" name="id" value="@u.UserID" />
+                                <input type="hidden" name="newPassword" value="123456" />
+                                <button type="submit" class="btn btn-info-modern btn-sm">
+                                    <i class="fas fa-key"></i> Reset mật khẩu
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+ </div>
+
+

@@ -17,10 +17,14 @@
 @{
     var totalInvoices = Model.Count();
     var totalRevenue = Model.Sum(i => i.NetDue ?? 0);
+    var paidInvoices = Model.Count(i => i.IsPaid);
+    var unpaidInvoices = Model.Count(i => !i.IsPaid);
+    var paidRevenue = Model.Where(i => i.IsPaid).Sum(i => i.NetDue ?? 0);
+    var unpaidRevenue = Model.Where(i => !i.IsPaid).Sum(i => i.NetDue ?? 0);
 }
 
 <div class="row g-4 mb-4">
-    <div class="col-lg-6 col-md-6">
+    <div class="col-lg-3 col-md-6">
         <div class="stats-card primary fade-in-up" style="animation-delay: 0.1s">
             <div class="stats-icon primary">
                 <i class="fas fa-file-invoice"></i>
@@ -29,14 +33,69 @@
             <div class="stats-value">@totalInvoices</div>
         </div>
     </div>
-    <div class="col-lg-6 col-md-6">
+    <div class="col-lg-3 col-md-6">
         <div class="stats-card success fade-in-up" style="animation-delay: 0.2s">
             <div class="stats-icon success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stats-title">ĐÃ THANH TOÁN</div>
+            <div class="stats-value">@paidInvoices</div>
+            <small class="text-muted d-block mt-2">@paidRevenue.ToString("N0") đ</small>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card danger fade-in-up" style="animation-delay: 0.3s">
+            <div class="stats-icon danger">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="stats-title">CHƯA THANH TOÁN</div>
+            <div class="stats-value">@unpaidInvoices</div>
+            <small class="text-muted d-block mt-2">@unpaidRevenue.ToString("N0") đ</small>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card warning fade-in-up" style="animation-delay: 0.4s">
+            <div class="stats-icon warning">
                 <i class="fas fa-money-bill-wave"></i>
             </div>
             <div class="stats-title">TỔNG DOANH THU</div>
-            <div class="stats-value">@totalRevenue.ToString("N0") đ</div>
+            <div class="stats-value" style="font-size: 1.5rem;">@totalRevenue.ToString("N0") đ</div>
         </div>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card-modern fade-in-up mb-4" style="animation-delay: 0.3s">
+    <div class="card-body-modern">
+        <form method="get" class="row g-3">
+            <div class="col-md-7">
+                <label class="form-label-modern">Tìm kiếm</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           name="searchTerm" 
+                           class="form-control" 
+                           placeholder="Tìm kiếm theo Mã hóa đơn, Mã phòng, Tên khách hàng..." 
+                           value="@ViewBag.SearchTerm"
+                           style="border-left: none;" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label-modern">Trạng thái thanh toán</label>
+                <select name="paymentStatus" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="paid" selected="@(ViewBag.PaymentStatus == "paid")">Đã thanh toán</option>
+                    <option value="unpaid" selected="@(ViewBag.PaymentStatus == "unpaid")">Chưa thanh toán</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary-modern w-100">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+            </div>
+        </form> `\ 
     </div>
 </div>
 

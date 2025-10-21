@@ -1,0 +1,199 @@
+@model HotelManagement.Models.ConfirmationReceipt
+
+@{
+    ViewData["Title"] = "Phiếu xác nhận";
+}
+
+<style>
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+        #printarea, #printarea * {
+            visibility: visible;
+        }
+        #printarea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+
+<div class="container-modern no-print">
+    <div class="header-modern">
+        <h2><i class="fas fa-receipt me-2"></i>Phiếu xác nhận</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb-modern">
+                <li class="breadcrumb-item-modern"><a asp-controller="Dashboard" asp-action="Index">Trang chủ</a></li>
+                <li class="breadcrumb-item-modern active">Phiếu xác nhận</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="mb-3 no-print">
+        <button onclick="window.print()" class="btn btn-primary-modern">
+            <i class="fas fa-print"></i> In phiếu
+        </button>
+        <a href="javascript:history.back()" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div id="printarea" class="container" style="max-width: 800px; margin: 0 auto; padding: 20px; background: white;">
+    <!-- Header -->
+    <div style="text-align: center; border-bottom: 3px solid #333; padding-bottom: 20px; margin-bottom: 30px;">
+        <h1 style="color: #2c3e50; margin-bottom: 5px;">KING HOTEL</h1>
+        <p style="color: #7f8c8d; margin: 0;">Địa chỉ: 451 Lê Văn Việt, Phường Tăng Nhơn Phú A, TP. Thủ Đức, TP.HCM</p>
+        <p style="color: #7f8c8d; margin: 0;">Điện thoại: (028) 333458584 | Email: Info@kinghotel.com</p>
+    </div>
+
+    <!-- Receipt Title -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        @if (Model.ReceiptType == "RESERVATION")
+        {
+            <h2 style="color: #e74c3c; margin: 0; font-size: 28px;">PHIẾU XÁC NHẬN ĐẶT PHÒNG</h2>
+        }
+        else if (Model.ReceiptType == "CHECKIN")
+        {
+            <h2 style="color: #27ae60; margin: 0; font-size: 28px;">PHIẾU XÁC NHẬN CHECK-IN</h2>
+        }
+        else if (Model.ReceiptType == "CHECKOUT")
+        {
+            <h2 style="color: #f39c12; margin: 0; font-size: 28px;">PHIẾU XÁC NHẬN CHECK-OUT</h2>
+        }
+        <p style="color: #7f8c8d; margin-top: 10px;">Mã phiếu: <strong>@Model.ReceiptID</strong></p>
+        <p style="color: #7f8c8d; margin: 0;">Ngày phát hành: <strong>@Model.IssueDate.ToString("dd/MM/yyyy HH:mm")</strong></p>
+    </div>
+
+    <!-- Customer & Room Info -->
+    <div style="display: table; width: 100%; margin-bottom: 30px;">
+        <div style="display: table-cell; width: 50%; padding-right: 20px;">
+            <h4 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Thông tin khách hàng</h4>
+            <table style="width: 100%; margin-top: 15px;">
+                <tr>
+                    <td style="padding: 5px 0; color: #7f8c8d;">Họ tên:</td>
+                    <td style="padding: 5px 0;"><strong>@Model.CustomerName</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #7f8c8d;">Điện thoại:</td>
+                    <td style="padding: 5px 0;">@Model.CustomerPhone</td>
+                </tr>
+                @if (!string.IsNullOrEmpty(Model.CustomerEmail))
+                {
+                    <tr>
+                        <td style="padding: 5px 0; color: #7f8c8d;">Email:</td>
+                        <td style="padding: 5px 0;">@Model.CustomerEmail</td>
+                    </tr>
+                }
+            </table>
+        </div>
+        <div style="display: table-cell; width: 50%; padding-left: 20px; border-left: 1px solid #ddd;">
+            <h4 style="color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">Thông tin phòng</h4>
+            <table style="width: 100%; margin-top: 15px;">
+                <tr>
+                    <td style="padding: 5px 0; color: #7f8c8d;">Mã phòng:</td>
+                    <td style="padding: 5px 0;"><strong style="color: #27ae60;">@Model.RoomID</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #7f8c8d;">Loại phòng:</td>
+                    <td style="padding: 5px 0;">@Model.RoomCategoryName</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #7f8c8d;">Ngày nhận phòng:</td>
+                    <td style="padding: 5px 0;"><strong>@Model.CheckInDate.ToString("dd/MM/yyyy HH:mm")</strong></td>
+                </tr>
+                @if (Model.CheckOutDate.HasValue)
+                {
+                    <tr>
+                        <td style="padding: 5px 0; color: #7f8c8d;">Ngày trả phòng:</td>
+                        <td style="padding: 5px 0;"><strong>@Model.CheckOutDate.Value.ToString("dd/MM/yyyy HH:mm")</strong></td>
+                    </tr>
+                }
+            </table>
+        </div>
+    </div>
+
+    <!-- Payment Summary -->
+    <div style="background-color: #ecf0f1; padding: 20px; border-radius: 8px;">
+        <h4 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px;">Thông tin thanh toán</h4>
+        <table style="width: 100%; font-size: 14px;">
+            @if (Model.UnitPrice.HasValue)
+            {
+                <tr>
+                    <td style="padding: 8px 0;">Đơn giá:</td>
+                    <td style="padding: 8px 0; text-align: right;">@Model.UnitPrice.Value.ToString("N0") đ / @(Model.PriceUnit == "HOUR" ? "giờ" : "ngày")</td>
+                </tr>
+            }
+            @if (Model.Deposit.HasValue)
+            {
+                <tr>
+                    <td style="padding: 8px 0;">Tiền đặt cọc:</td>
+                    <td style="padding: 8px 0; text-align: right; color: #27ae60;">@Model.Deposit.Value.ToString("N0") đ</td>
+                </tr>
+            }
+            @if (Model.TotalAmount.HasValue)
+            {
+                <tr style="border-top: 2px solid #2c3e50;">
+                    <td style="padding: 12px 0; font-size: 16px;"><strong>Tổng tiền:</strong></td>
+                    <td style="padding: 12px 0; text-align: right; font-size: 18px; color: #e74c3c;"><strong>@Model.TotalAmount.Value.ToString("N0") đ</strong></td>
+                </tr>
+            }
+        </table>
+    </div>
+
+    <!-- Employee Info -->
+    @if (!string.IsNullOrEmpty(Model.EmployeeName))
+    {
+        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+            <p style="margin: 0; color: #7f8c8d;">Nhân viên phụ trách: <strong>@Model.EmployeeName</strong></p>
+        </div>
+    }
+
+    <!-- Notes -->
+    @if (!string.IsNullOrEmpty(Model.Notes))
+    {
+        <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+            <h5 style="color: #856404; margin-bottom: 10px;">Ghi chú:</h5>
+            <p style="margin: 0; color: #856404;">@Model.Notes</p>
+        </div>
+    }
+
+    <!-- QR Code -->
+    @if (!string.IsNullOrEmpty(Model.QrCode))
+    {
+        <div style="margin-top: 30px; text-align: center;">
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; display: inline-block;">
+                <p style="margin: 0 0 10px 0; color: #7f8c8d; font-size: 12px;">QR Code xác thực</p>
+                <div style="width: 100px; height: 100px; background-color: #ddd; margin: 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                    <i class="fas fa-qrcode" style="font-size: 24px; color: #7f8c8d;"></i>
+                </div>
+                <p style="margin: 10px 0 0 0; color: #7f8c8d; font-size: 10px;">@Model.QrCode</p>
+            </div>
+        </div>
+    }
+
+    <!-- Footer -->
+    <div style="margin-top: 50px; text-align: center;">
+        <div style="display: table; width: 100%; margin-top: 40px;">
+            <div style="display: table-cell; width: 50%; text-align: center;">
+                <p style="margin: 0; color: #7f8c8d;">Nhân viên lễ tân</p>
+                <p style="margin: 60px 0 5px 0; font-style: italic; color: #bdc3c7;">(Ký và ghi rõ họ tên)</p>
+            </div>
+            <div style="display: table-cell; width: 50%; text-align: center;">
+                <p style="margin: 0; color: #7f8c8d;">Khách hàng</p>
+                <p style="margin: 60px 0 5px 0; font-style: italic; color: #bdc3c7;">(Ký và ghi rõ họ tên)</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #7f8c8d; font-size: 12px;">
+        <p style="margin: 0;">Cảm ơn quý khách đã sử dụng dịch vụ của chúng tôi!</p>
+        <p style="margin: 5px 0 0 0;">Hẹn gặp lại quý khách trong những lần tiếp theo.</p>
+    </div>
+</div>

@@ -9,11 +9,28 @@
 
 <!-- Page Header -->
 <div class="page-header fade-in-up">
-    <h1>
-        <i class="fas fa-cash-register"></i>
-        Thanh toán & Trả phòng
-    </h1>
-    <p>Phiếu đặt phòng #@reservation.ReservationFormID</p>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>
+                <i class="fas fa-cash-register"></i>
+                Thanh toán & Trả phòng
+            </h1>
+            <p class="mb-0">Phiếu đặt phòng #@reservation.ReservationFormID</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-controller="ConfirmationReceipt" asp-action="PrintCheckIn" asp-route-reservationId="@reservation.ReservationFormID" 
+               class="btn btn-warning-modern" title="In phiếu check-in" target="_blank">
+                <i class="fas fa-receipt"></i> In phiếu check-in
+            </a>
+            @if (reservation.HistoryCheckOut != null)
+            {
+                <a asp-controller="ConfirmationReceipt" asp-action="PrintCheckOut" asp-route-reservationId="@reservation.ReservationFormID" 
+                   class="btn btn-success-modern" title="In phiếu check-out" target="_blank">
+                    <i class="fas fa-receipt"></i> In phiếu check-out
+                </a>
+            }
+        </div>
+    </div>
 </div>
 
 <div class="row g-4">

@@ -58,12 +58,45 @@ namespace HotelManagement.Controllers
         }
 
         // GET: Report/Revenue - Báo cáo doanh thu (DFD 6.1)
-        public async Task<IActionResult> Revenue(DateTime? fromDate, DateTime? toDate)
+        public async Task<IActionResult> Revenue(DateTime? fromDate, DateTime? toDate, string preset)
         {
             // Kiểm tra đăng nhập
             if (string.IsNullOrEmpty(HttpContext.Session.GetString("UserID")))
             {
                 return RedirectToAction("Login", "Auth");
+            }
+
+            // Handle preset filters
+            if (!string.IsNullOrEmpty(preset))
+            {
+                var today = DateTime.Today;
+                switch (preset.ToLower())
+                {
+                    case "today":
+                        fromDate = today;
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "yesterday":
+                        fromDate = today.AddDays(-1);
+                        toDate = today.AddSeconds(-1); // Cuối ngày hôm qua
+                        break;
+                    case "7days":
+                        fromDate = today.AddDays(-6);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "30days":
+                        fromDate = today.AddDays(-29);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "30daysago":
+                        fromDate = today.AddDays(-60);
+                        toDate = today.AddDays(-30).AddDays(1).AddSeconds(-1);
+                        break;
+                    case "3months":
+                        fromDate = today.AddMonths(-3);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                }
             }
 
             // Mặc định: tháng hiện tại
@@ -129,12 +162,45 @@ namespace HotelManagement.Controllers
         }
 
         // GET: Report/RoomOccupancy - Báo cáo công suất phòng (DFD 6.2)
-        public async Task<IActionResult> RoomOccupancy(DateTime? fromDate, DateTime? toDate)
+        public async Task<IActionResult> RoomOccupancy(DateTime? fromDate, DateTime? toDate, string preset)
         {
             // Kiểm tra đăng nhập
             if (string.IsNullOrEmpty(HttpContext.Session.GetString("UserID")))
             {
                 return RedirectToAction("Login", "Auth");
+            }
+
+            // Handle preset filters
+            if (!string.IsNullOrEmpty(preset))
+            {
+                var today = DateTime.Today;
+                switch (preset.ToLower())
+                {
+                    case "today":
+                        fromDate = today;
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "yesterday":
+                        fromDate = today.AddDays(-1);
+                        toDate = today.AddSeconds(-1); // Cuối ngày hôm qua
+                        break;
+                    case "7days":
+                        fromDate = today.AddDays(-6);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "30days":
+                        fromDate = today.AddDays(-29);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "30daysago":
+                        fromDate = today.AddDays(-60);
+                        toDate = today.AddDays(-30).AddDays(1).AddSeconds(-1);
+                        break;
+                    case "3months":
+                        fromDate = today.AddMonths(-3);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                }
             }
 
             // Mặc định: tháng hiện tại
@@ -264,12 +330,45 @@ namespace HotelManagement.Controllers
         }
 
         // GET: Report/EmployeePerformance - Báo cáo hiệu suất nhân viên (DFD 6.3)
-        public async Task<IActionResult> EmployeePerformance(DateTime? fromDate, DateTime? toDate)
+        public async Task<IActionResult> EmployeePerformance(DateTime? fromDate, DateTime? toDate, string preset)
         {
             // Kiểm tra đăng nhập
             if (string.IsNullOrEmpty(HttpContext.Session.GetString("UserID")))
             {
                 return RedirectToAction("Login", "Auth");
+            }
+
+            // Handle preset filters
+            if (!string.IsNullOrEmpty(preset))
+            {
+                var today = DateTime.Today;
+                switch (preset.ToLower())
+                {
+                    case "today":
+                        fromDate = today;
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "yesterday":
+                        fromDate = today.AddDays(-1);
+                        toDate = today.AddSeconds(-1); // Cuối ngày hôm qua
+                        break;
+                    case "7days":
+                        fromDate = today.AddDays(-6);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "30days":
+                        fromDate = today.AddDays(-29);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                    case "30daysago":
+                        fromDate = today.AddDays(-60);
+                        toDate = today.AddDays(-30).AddDays(1).AddSeconds(-1);
+                        break;
+                    case "3months":
+                        fromDate = today.AddMonths(-3);
+                        toDate = today.AddDays(1).AddSeconds(-1); // Cuối ngày hôm nay
+                        break;
+                }
             }
 
             // Mặc định: tháng hiện tại

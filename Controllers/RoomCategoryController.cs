@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace HotelManagement.Controllers
 {
-    [Authorize(Roles = "ADMIN,MANAGER")]
     public class RoomCategoryController : BaseController
     {
         private readonly HotelManagementContext _context;

@@ -141,6 +141,10 @@
                                            class="btn btn-info-modern btn-sm">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        <a asp-controller="ConfirmationReceipt" asp-action="PrintReservation" asp-route-reservationId="@item.ReservationFormID" 
+                                           class="btn btn-warning-modern btn-sm" title="In phiếu xác nhận" target="_blank">
+                                            <i class="fas fa-receipt"></i>
+                                        </a>
                                         <form asp-action="Delete" asp-route-id="@item.ReservationFormID" method="post" class="d-inline" 
                                               onsubmit="return confirm('Bạn có chắc muốn xóa phiếu đặt phòng này?');">
                                             @Html.AntiForgeryToken()

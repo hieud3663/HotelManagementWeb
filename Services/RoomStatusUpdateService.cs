@@ -26,7 +26,6 @@ namespace HotelManagement.Services
             _logger.LogInformation("🚀 Room Status Update Service đã khởi động");
             _logger.LogInformation($"⏰ Cập nhật mỗi {_updateInterval.TotalMinutes} phút");
 
-            // Đợi 10 giây khi khởi động để đảm bảo database đã sẵn sàng
             await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
@@ -40,7 +39,6 @@ namespace HotelManagement.Services
                     _logger.LogError(ex, "❌ Lỗi khi cập nhật trạng thái phòng");
                 }
 
-                // Đợi 30 phút trước khi chạy lại
                 _logger.LogInformation($"⏳ Đợi {_updateInterval.TotalMinutes} phút đến lần cập nhật tiếp theo...");
                 await Task.Delay(_updateInterval, stoppingToken);
             }
@@ -60,7 +58,6 @@ namespace HotelManagement.Services
                     var startTime = DateTime.Now;
                     _logger.LogInformation($"🔄 Bắt đầu cập nhật trạng thái phòng lúc {startTime:HH:mm:ss}");
 
-                    // Gọi stored procedure
                     await context.Database.ExecuteSqlRawAsync(
                         "EXEC sp_UpdateRoomStatusToReserved"
                     );
@@ -70,7 +67,6 @@ namespace HotelManagement.Services
 
                     _logger.LogInformation($"✅ Cập nhật thành công trong {duration}ms");
 
-                    // Log thêm thông tin chi tiết
                     var reservedRooms = await context.Rooms
                         .Where(r => r.RoomStatus == "RESERVED")
                         .CountAsync();

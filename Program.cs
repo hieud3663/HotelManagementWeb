@@ -37,7 +37,6 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddHttpContextAccessor();
 
-// ✅ THÊM BACKGROUND SERVICE TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI PHÒNG
 // Service này sẽ chạy mỗi 30 phút để cập nhật phòng sang RESERVED khi còn 5h đến check-in
 builder.Services.AddHostedService<RoomStatusUpdateService>();
 

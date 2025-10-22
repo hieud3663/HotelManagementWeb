@@ -147,18 +147,26 @@
     <div class="container-fluid px-4 py-4">
         @if (TempData["Success"] != null)
         {
-            <div class="alert-modern alert-success-modern alert-dismissible fade show fade-in-up" role="alert">
+            <div class="alert-modern alert-success-modern alert-dismissible fade show fade-in-up my-3" role="alert">
                 <i class="fas fa-check-circle"></i>
-                <span>@TempData["Success"]</span>
+                <span>@Html.Raw(@TempData["Success"])</span>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         }
         @if (TempData["Error"] != null)
         {
-            <div class="alert-modern alert-danger-modern alert-dismissible fade show fade-in-up" role="alert">
+            <div class="alert-modern alert-danger-modern alert-dismissible fade show fade-in-up my-3" role="alert">
                 <i class="fas fa-exclamation-circle"></i>
                 <span>@TempData["Error"]</span>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert-modern alert-warning-modern alert-dismissible fade show fade-in-up my-3" role="alert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>@TempData["Warning"]</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
         <main role="main" class="pb-4">

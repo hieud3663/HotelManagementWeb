@@ -13,6 +13,54 @@
     <p>Danh sách các phòng đã check-in và chờ khách trả phòng</p>
 </div>
 
+<!-- Search Form -->
+<div class="card-modern fade-in-up mb-4">
+    <div class="card-header-modern">
+        <span><i class="fas fa-search me-2"></i>Tìm kiếm Check-out</span>
+    </div>
+    <div class="card-body-modern">
+        <form id="searchForm" method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="phoneNumber" class="form-label">
+                    <i class="fas fa-phone"></i> Số điện thoại
+                </label>
+                <input type="text" class="form-control" id="phoneNumber" name="phoneNumber" 
+                       placeholder="Nhập số điện thoại..." value="@ViewBag.PhoneNumber">
+            </div>
+            <div class="col-md-4">
+                <label for="customerName" class="form-label">
+                    <i class="fas fa-user"></i> Tên khách hàng
+                </label>
+                <input type="text" class="form-control" id="customerName" name="customerName" 
+                       placeholder="Nhập tên khách hàng..." value="@ViewBag.CustomerName">
+            </div>
+            <div class="col-md-4">
+                <label for="reservationId" class="form-label">
+                    <i class="fas fa-hashtag"></i> Mã phiếu đặt phòng
+                </label>
+                <input type="text" class="form-control" id="reservationId" name="reservationId" 
+                       placeholder="Nhập mã phiếu..." value="@ViewBag.ReservationId">
+            </div>
+            <div class="col-12">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary-modern">
+                        <i class="fas fa-search"></i> Tìm kiếm
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-secondary-modern">
+                        <i class="fas fa-refresh"></i> Làm mới
+                    </a>
+                    @if (!string.IsNullOrEmpty(ViewBag.PhoneNumber) || !string.IsNullOrEmpty(ViewBag.CustomerName) || !string.IsNullOrEmpty(ViewBag.ReservationId))
+                    {
+                        <span class="badge-modern badge-info-modern align-self-center">
+                            <i class="fas fa-filter"></i> Đang lọc kết quả
+                        </span>
+                    }
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Main Content -->
 <div class="card-modern fade-in-up">
     <div class="card-header-modern d-flex justify-content-between align-items-center">
@@ -25,14 +73,43 @@
         @if (!Model.Any())
         {
             <div class="text-center py-5">
-                <div class="stats-icon success mx-auto mb-4">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h4 class="text-muted mb-3">Không có phòng chờ check-out</h4>
-                <p class="text-muted">Tất cả các phòng đã được check-out hoàn tất</p>
-                <a href="@Url.Action("Index", "CheckIn")" class="btn btn-primary-modern mt-3">
-                    <i class="fas fa-sign-in-alt"></i> Quản lý Check-in
-                </a>
+                @if (!string.IsNullOrEmpty(ViewBag.PhoneNumber) || !string.IsNullOrEmpty(ViewBag.CustomerName) || !string.IsNullOrEmpty(ViewBag.ReservationId))
+                {
+                    <div class="empty-search-results">
+                        <i class="fas fa-search"></i>
+                        <h4 class="text-muted mb-3">Không tìm thấy kết quả</h4>
+                        <p class="text-muted mb-4">Không có phòng nào phù hợp với tiêu chí tìm kiếm của bạn</p>
+                        <div class="mb-3">
+                            <small class="text-muted">Từ khóa tìm kiếm:</small>
+                            @if (!string.IsNullOrEmpty(ViewBag.PhoneNumber))
+                            {
+                                <span class="badge-modern badge-info-modern me-2">SĐT: @ViewBag.PhoneNumber</span>
+                            }
+                            @if (!string.IsNullOrEmpty(ViewBag.CustomerName))
+                            {
+                                <span class="badge-modern badge-info-modern me-2">Tên: @ViewBag.CustomerName</span>
+                            }
+                            @if (!string.IsNullOrEmpty(ViewBag.ReservationId))
+                            {
+                                <span class="badge-modern badge-info-modern me-2">Mã: @ViewBag.ReservationId</span>
+                            }
+                        </div>
+                        <a href="@Url.Action("Index")" class="btn btn-primary-modern">
+                            <i class="fas fa-refresh"></i> Xóa bộ lọc
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="stats-icon success mx-auto mb-4">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h4 class="text-muted mb-3">Không có phòng chờ check-out</h4>
+                    <p class="text-muted">Tất cả các phòng đã được check-out hoàn tất</p>
+                    <a href="@Url.Action("Index", "CheckIn")" class="btn btn-primary-modern mt-3">
+                        <i class="fas fa-sign-in-alt"></i> Quản lý Check-in
+                    </a>
+                }
             </div>
         }
         else
@@ -54,9 +131,17 @@
                     <tbody>
                         @foreach (var item in Model)
                         {
-                            var daysDiff = Math.Ceiling((DateTime.Now - item.CheckInDate).TotalHours);
-
                             var unit = item.ReservationForm!.PriceUnit;
+                            int? daysDiff = null;
+                            if (unit == "HOUR")
+                            {
+                                daysDiff = (int)Math.Ceiling((DateTime.Now - item.CheckInDate).TotalHours);
+                            }
+                            else
+                            {
+                                daysDiff = (int)Math.Ceiling((DateTime.Now - item.CheckInDate).TotalDays);
+                            }
+
                             var duration = (unit == "HOUR") ? daysDiff : daysDiff * 24;
                             var isOverdue = DateTime.Now > item.ReservationForm!.CheckOutDate;
                             
@@ -287,6 +372,41 @@
 
 @section Scripts {
     <script>
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            let searchTimeout;
+            const searchInputs = document.querySelectorAll('#phoneNumber, #customerName, #reservationId');
+            
+            searchInputs.forEach(input => {
+                // Enter key để submit ngay lập tức
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        clearTimeout(searchTimeout);
+                        document.getElementById('searchForm').submit();
+                    }
+                });
+            });
+            
+            // Highlight search terms in results
+            const searchTerms = [
+                '@ViewBag.PhoneNumber',
+                '@ViewBag.CustomerName', 
+                '@ViewBag.ReservationId'
+            ].filter(term => term && term !== '');
+            
+            if (searchTerms.length > 0) {
+                searchTerms.forEach(term => {
+                    const regex = new RegExp(`(${term})`, 'gi');
+                    const cells = document.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        if (cell.textContent.toLowerCase().includes(term.toLowerCase())) {
+                            cell.innerHTML = cell.innerHTML.replace(regex, '<mark class="search-highlight">$1</mark>');
+                        }
+                    });
+                });
+            }
+        });
+        
         // Fix modal backdrop issue và đảm bảo modal hoạt động mượt mà
         document.addEventListener('DOMContentLoaded', function() {
             // Xóa tất cả backdrop cũ khi tải trang
@@ -365,7 +485,82 @@
     </script>
     
     <style>
-        /* Fix modal z-index và animation issues */
+        /* Search form styling */
+        #searchForm .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+            background-color: #fff;
+        }
+        
+        #searchForm .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            background-color: #fff;
+        }
+        
+        #searchForm .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        
+        #searchForm .form-label i {
+            color: #007bff;
+            margin-right: 0.5rem;
+        }
+        
+        /* Search highlight */
+        .search-highlight {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 0.1rem 0.2rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+        
+        /* Search form animation */
+        .card-modern.fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @@keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Loading state for search */
+        .search-loading {
+            position: relative;
+        }
+        
+        .search-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @@keyframes spin {
+            0% { transform: translateY(-50%) rotate(0deg); }
+            100% { transform: translateY(-50%) rotate(360deg); }
+        }
+        
+            /* Fix modal z-index và animation issues */
         .modal {
             z-index: 1055 !important;
         }
@@ -422,6 +617,24 @@
             transform: translateY(-1px);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease;
+        }
+        
+        /* Search results styling */
+        .table-modern tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+        }
+        
+        /* Empty state styling */
+        .empty-search-results {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6c757d;
+        }
+        
+        .empty-search-results i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #dee2e6;
         }
     </style>
 }

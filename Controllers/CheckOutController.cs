@@ -21,12 +21,12 @@ namespace HotelManagement.Controllers
 
         // REMOVED: CalculateHourlyFee() - Không còn cần tính phí theo bậc thang
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? phoneNumber = null, string? customerName = null, string? reservationId = null)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             
             // Lấy danh sách phòng đã check-in nhưng chưa check-out
-            var checkedInReservations = await _context.HistoryCheckins
+            var query = _context.HistoryCheckins
                 .Include(h => h.ReservationForm)
                 .ThenInclude(r => r!.Customer)
                 .Include(h => h.ReservationForm)
@@ -34,12 +34,33 @@ namespace HotelManagement.Controllers
                 .ThenInclude(ro => ro!.RoomCategory)
                 .ThenInclude(rc => rc!.Pricings)
                 .Include(h => h.ReservationForm)
-                .ThenInclude(r => r!.Invoices) // Thêm Invoices để kiểm tra trạng thái thanh toán
+                .ThenInclude(r => r!.Invoices)
                 .Include(h => h.ReservationForm)
-                .ThenInclude(r => r!.HistoryCheckOut) // Thêm HistoryCheckOut để kiểm tra đã checkout chưa
-                .Where(h => !_context.HistoryCheckOuts.Any(co => co.ReservationFormID == h.ReservationFormID))
+                .ThenInclude(r => r!.HistoryCheckOut)
+                .Where(h => !_context.HistoryCheckOuts.Any(co => co.ReservationFormID == h.ReservationFormID));
+
+            if (!string.IsNullOrEmpty(phoneNumber))
+            {
+                query = query.Where(h => h.ReservationForm!.Customer!.PhoneNumber.Contains(phoneNumber));
+            }
+
+            if (!string.IsNullOrEmpty(customerName))
+            {
+                query = query.Where(h => h.ReservationForm!.Customer!.FullName.Contains(customerName));
+            }
+
+            if (!string.IsNullOrEmpty(reservationId))
+            {
+                query = query.Where(h => h.ReservationFormID.Contains(reservationId));
+            }
+
+            var checkedInReservations = await query
                 .OrderByDescending(h => h.CheckInDate)
                 .ToListAsync();
+
+            ViewBag.PhoneNumber = phoneNumber;
+            ViewBag.CustomerName = customerName;
+            ViewBag.ReservationId = reservationId;
 
             return View(checkedInReservations);
         }

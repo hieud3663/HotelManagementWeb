@@ -14,7 +14,7 @@
 </div>
 
 <!-- Success/Error Messages -->
-@if (TempData["Success"] != null)
+@* @if (TempData["Success"] != null)
 {
     <div class="alert alert-success alert-dismissible fade show fade-in-up" role="alert">
         <i class="fas fa-check-circle me-2"></i>@Html.Raw(TempData["Success"])
@@ -34,7 +34,7 @@
         <i class="fas fa-exclamation-circle me-2"></i>@TempData["Warning"]
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-}
+} *@
 
 <!-- Main Content -->
 <div class="card-modern fade-in-up">

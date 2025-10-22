@@ -18,7 +18,6 @@ namespace HotelManagement.Controllers
         }
 
         /// <summary>
-        /// API kiểm tra trạng thái Background Service
         /// GET: /ServiceStatus/Check
         /// </summary>
         public IActionResult Check()
@@ -32,7 +31,6 @@ namespace HotelManagement.Controllers
         }
 
         /// <summary>
-        /// API test chạy thủ công sp_UpdateRoomStatusToReserved
         /// POST: /ServiceStatus/ManualUpdate
         /// </summary>
         [HttpPost]
@@ -55,24 +53,23 @@ namespace HotelManagement.Controllers
                 return Json(new
                 {
                     success = true,
-                    message = $"✅ Cập nhật thành công trong {duration}ms",
+                    message = $"Cập nhật thành công trong {duration}ms",
                     reservedRoomCount = reservedRooms,
                     timestamp = DateTime.Now
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Lỗi khi cập nhật thủ công");
+                _logger.LogError(ex, "Lỗi khi cập nhật thủ công");
                 return Json(new
                 {
                     success = false,
-                    message = $"❌ Lỗi: {ex.Message}"
+                    message = $"Lỗi: {ex.Message}"
                 });
             }
         }
 
         /// <summary>
-        /// API lấy danh sách phòng sắp chuyển sang RESERVED
         /// GET: /ServiceStatus/GetUpcomingReservations
         /// </summary>
         [HttpGet]

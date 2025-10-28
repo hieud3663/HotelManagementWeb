@@ -2425,7 +2425,7 @@ GO
 CREATE OR ALTER PROCEDURE sp_ConfirmPayment
     @invoiceID NVARCHAR(15),
     @paymentMethod NVARCHAR(20) = 'CASH',
-    @employeeID NVARCHAR(15)
+    @employeeID NVARCHAR(15) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;

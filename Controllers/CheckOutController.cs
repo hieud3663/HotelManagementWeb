@@ -275,13 +275,14 @@ namespace HotelManagement.Controllers
             return RedirectToAction("Payment", new { invoiceID });
         }
 
-        public record WebHookRequest(string InvoiceID, string PaymentMethod, string employeeID, decimal amount);
+        public record WebHookRequest(decimal transferAmount, string code);
 
         // Xác nhận thanh toán cho invoice -- webhook
         [HttpPost("/api/webhook/confirm-payment")]  // ← Route tuyệt đối
         public async Task<IActionResult> WebHookConfirmPayment([FromBody] WebHookRequest request)
         {
-            var api_key = HttpContext.Request.Headers["x-api-key"].FirstOrDefault();
+            var api_key = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+            api_key = api_key?.Replace("Apikey ", ""); // Loại bỏ "Apikey " nếu có
             var expected_api_key = Environment.GetEnvironmentVariable("WEBHOOK_API_KEY");
 
             if (api_key != expected_api_key)
@@ -296,10 +297,32 @@ namespace HotelManagement.Controllers
 
             try
             {
-                var invoiceID = request.InvoiceID;
-                var paymentMethod = request.PaymentMethod;
-                string employeeID = request.employeeID;
-                decimal amount = request.amount;
+                // Tìm mã invoice dạng INV001, INV-001, RF001, RF-001, etc.
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    request.code,
+                    @"(INV)[-]?(\d{6})",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                );
+
+                if (!match.Success)
+                {
+                    return BadRequest(new
+                    {
+                        status = "failed",
+                        message = "Invoice ID not found in transfer content",
+                        success = false,
+                        hint = "Content should contain invoice ID (e.g., 'INV-000001' or 'INV000001')"
+                    });
+                }
+
+                // Tạo mã chuẩn: INV-000001
+                var prefix = match.Groups[1].Value.ToUpper();
+                var number = match.Groups[2].Value;
+                var invoiceID = $"{prefix}-{number}";
+
+                var paymentMethod = "TRANSFER"; // Mặc định là chuyển khoản
+                // string employeeID = extractCode[1].Trim();
+                decimal amount = request.transferAmount;
 
                 // Lấy thông tin hóa đơn
                 var invoice = await _context.Invoices
@@ -327,7 +350,7 @@ namespace HotelManagement.Controllers
                 }
 
                 // Gọi SP để xác nhận thanh toán
-                var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID);
+                var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID: "");
 
                 if (result != null && result.Status == "PAYMENT_CONFIRMED")
                 {
@@ -360,7 +383,7 @@ namespace HotelManagement.Controllers
             }
         }
 
-        
+
         // LUỒNG 2: THANH TOÁN TRƯỚC (Pay Then Checkout)
         // Bước 1: Thanh toán ngay (tính theo thời gian DỰ KIẾN)
         [HttpPost]

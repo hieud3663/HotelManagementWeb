@@ -17,7 +17,7 @@ jobs:
     - name: Stop existing containers
       run: |
         cd $GITHUB_WORKSPACE
-        docker-compose down || true
+        docker compose down || true
 
     - name: Remove old images (optional - giải phóng dung lượng)
       run: |
@@ -26,7 +26,7 @@ jobs:
     - name: Build and start Docker containers
       run: |
         cd $GITHUB_WORKSPACE
-        docker-compose up -d --build
+        docker compose up -d --build
 
     - name: Wait for application to be ready
       run: |
@@ -36,12 +36,12 @@ jobs:
     - name: Check container status
       run: |
         echo "📊 Trạng thái containers:"
-        docker-compose ps
+        docker compose ps
         
     - name: Show application logs
       run: |
         echo "📝 Logs của webapp:"
-        docker-compose logs --tail=50 webapp
+        docker compose logs --tail=50 webapp
 
     - name: Health check
       run: |
@@ -61,7 +61,7 @@ jobs:
         done
         
         echo "❌ Health check failed after $max_attempts attempts"
-        docker-compose logs webapp
+        docker compose logs webapp
         exit 1
 
     - name: Cleanup old Docker resources
@@ -75,4 +75,4 @@ jobs:
       if: failure()
       run: |
         echo "❌ Deploy failed! Check logs above."
-        docker-compose logs --tail=100 webapp
+        docker compose logs --tail=100 webapp

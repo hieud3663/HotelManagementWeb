@@ -19,13 +19,17 @@ namespace HotelManagement.Controllers
             return HttpContext.Session.GetString("UserID") != null;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             
-            var customers = await _context.Customers
+            var query = _context.Customers
                 .Where(c => c.IsActivate == "ACTIVATE")
-                .ToListAsync();
+                .OrderBy(c => c.FullName);
+            
+            var customers = await PagedList<Customer>.CreateAsync(query, page, pageSize);
+            
+            ViewBag.PageSize = pageSize;
             return View(customers);
         }
 

@@ -1,4 +1,4 @@
-@model IEnumerable<HotelManagement.Models.Employee>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.Employee>
 
 @{
     ViewData["Title"] = "Quản lý Nhân viên";
@@ -22,7 +22,7 @@
 
 <!-- Statistics -->
 @{
-    var totalEmployees = Model.Count();
+    var totalEmployees = Model.TotalCount;
     var activeEmployees = Model.Count(e => e.IsActivate == "ACTIVATE");
 }
 
@@ -122,3 +122,6 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)

@@ -21,26 +21,31 @@ namespace HotelManagement.Controllers
         }
 
         // GET: HotelService
-        public async Task<IActionResult> Index(string? searchString, string? categoryFilter)
+        public async Task<IActionResult> Index(string? searchString, string? categoryFilter, int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
-            var services = from s in _context.HotelServices
-                          .Include(s => s.ServiceCategory)
-                          select s;
+            var query = from s in _context.HotelServices
+                      .Include(s => s.ServiceCategory)
+                      select s;
 
             // Lọc theo từ khóa tìm kiếm
             if (!string.IsNullOrEmpty(searchString))
             {
-                services = services.Where(s => s.ServiceName.Contains(searchString) 
-                                            || s.Description!.Contains(searchString));
+                query = query.Where(s => s.ServiceName.Contains(searchString) 
+                                        || s.Description!.Contains(searchString));
             }
 
             // Lọc theo danh mục
             if (!string.IsNullOrEmpty(categoryFilter))
             {
-                services = services.Where(s => s.ServiceCategoryID == categoryFilter);
+                query = query.Where(s => s.ServiceCategoryID == categoryFilter);
             }
+
+            query = query.OrderBy(s => s.ServiceCategoryID)
+                        .ThenBy(s => s.ServiceName);
+
+            var services = await PagedList<HotelService>.CreateAsync(query, page, pageSize);
 
             // Lấy danh sách categories cho dropdown
             ViewBag.ServiceCategories = await _context.ServiceCategories
@@ -49,10 +54,9 @@ namespace HotelManagement.Controllers
             
             ViewBag.SearchString = searchString;
             ViewBag.CategoryFilter = categoryFilter;
+            ViewBag.PageSize = pageSize;
 
-            return View(await services.OrderBy(s => s.ServiceCategoryID)
-                                     .ThenBy(s => s.ServiceName)
-                                     .ToListAsync());
+            return View(services);
         }
 
         // GET: HotelService/Details/5

@@ -1,4 +1,4 @@
-@model IEnumerable<HotelManagement.Models.Invoice>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.Invoice>
 
 @{
     ViewData["Title"] = "Quản lý Hóa đơn";
@@ -15,7 +15,7 @@
 
 <!-- Statistics -->
 @{
-    var totalInvoices = Model.Count();
+    var totalInvoices = Model.TotalCount;
     var totalRevenue = Model.Sum(i => i.NetDue ?? 0);
     var paidInvoices = Model.Count(i => i.IsPaid);
     var unpaidInvoices = Model.Count(i => !i.IsPaid);
@@ -63,6 +63,9 @@
         </div>
     </div>
 </div>
+
+@* <!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model) *@
 
 <!-- Search Bar -->
 <div class="card-modern fade-in-up mb-4" style="animation-delay: 0.3s">
@@ -219,3 +222,6 @@
         }
     </div>
 </div>
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)

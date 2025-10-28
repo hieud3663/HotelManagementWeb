@@ -1,4 +1,4 @@
-@model IEnumerable<HotelManagement.Models.Room>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.Room>
 
 @{
     ViewData["Title"] = "Quản lý Phòng";
@@ -404,6 +404,10 @@
         }
     </div>
 </div>
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)
+
 @section Scripts {
     <script>
         function switchView(viewType) {

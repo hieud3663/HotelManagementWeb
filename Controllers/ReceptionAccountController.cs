@@ -26,17 +26,18 @@ namespace HotelManagement.Controllers
         }
 
         // GET: /ReceptionAccount
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             if (!IsManagerOrAdmin()) return Forbid();
 
-            var users = await _context.Users
+            var query = _context.Users
                 .Include(u => u.Employee)
-                .Where(u => u.Role == "EMPLOYEE")
-                .OrderBy(u => u.Username)
-                .ToListAsync();
+                .Where(u => u.Role != "ADMIN") // Hiển thị cả MANAGER và EMPLOYEE
+                .OrderBy(u => u.Username);
 
+            var users = await PagedList<User>.CreateAsync(query, page, pageSize);
+            ViewBag.PageSize = pageSize;
             return View(users);
         }
 
@@ -50,8 +51,15 @@ namespace HotelManagement.Controllers
             ViewBag.ActiveEmployees = await _context.Employees
                 .Where(e => e.IsActivate == "ACTIVATE")
                 .OrderBy(e => e.FullName)
-                .Select(e => new { e.EmployeeID, e.FullName })
+                .Select(e => new { e.EmployeeID, e.FullName, e.Position })
                 .ToListAsync();
+
+            // Danh sách quyền có thể chọn (loại trừ ADMIN)
+            ViewBag.AvailableRoles = new List<object>
+            {
+                new { Value = "EMPLOYEE", Text = "Nhân viên (EMPLOYEE)" },
+                new { Value = "MANAGER", Text = "Quản lý (MANAGER)" }
+            };
 
             return View();
         }
@@ -59,14 +67,22 @@ namespace HotelManagement.Controllers
         // POST: /ReceptionAccount/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(string employeeId, string username, string password)
+        public async Task<IActionResult> Create(string employeeId, string username, string password, string role)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             if (!IsManagerOrAdmin()) return Forbid();
 
-            if (string.IsNullOrWhiteSpace(employeeId) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(employeeId) || string.IsNullOrWhiteSpace(username) || 
+                string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(role))
             {
                 TempData["Error"] = "Vui lòng nhập đầy đủ thông tin.";
+                return RedirectToAction(nameof(Create));
+            }
+
+            // Validate role
+            if (role != "EMPLOYEE" && role != "MANAGER")
+            {
+                TempData["Error"] = "Quyền tài khoản không hợp lệ.";
                 return RedirectToAction(nameof(Create));
             }
 
@@ -90,14 +106,14 @@ namespace HotelManagement.Controllers
                 EmployeeID = employeeId,
                 Username = username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                Role = "EMPLOYEE",
+                Role = role,
                 IsActivate = "ACTIVATE"
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Tạo tài khoản lễ tân thành công.";
+            TempData["Success"] = $"Tạo tài khoản {role.ToLower()} thành công.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -110,7 +126,7 @@ namespace HotelManagement.Controllers
             if (!IsManagerOrAdmin()) return Forbid();
             if (string.IsNullOrEmpty(id)) return NotFound();
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id && u.Role == "EMPLOYEE");
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id && u.Role != "ADMIN");
             if (user == null) return NotFound();
 
             user.IsActivate = user.IsActivate == "ACTIVATE" ? "DEACTIVATE" : "ACTIVATE";
@@ -134,7 +150,7 @@ namespace HotelManagement.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id && u.Role == "EMPLOYEE");
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id && u.Role != "ADMIN");
             if (user == null) return NotFound();
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);

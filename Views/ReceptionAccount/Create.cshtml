@@ -1,9 +1,9 @@
 @{
-    ViewData["Title"] = "Tạo tài khoản Lễ tân";
+    ViewData["Title"] = "Tạo tài khoản";
 }
 
 <div class="page-header fade-in-up">
-    <h1><i class="fas fa-user-plus"></i> Tạo tài khoản Lễ tân</h1>
+    <h1><i class="fas fa-user-plus"></i> Tạo tài khoản mới</h1>
 </div>
 
 @if (TempData["Error"] != null)
@@ -15,26 +15,60 @@
     <div class="card-body-modern">
         <form method="post" asp-action="Create">
             <div class="mb-3">
-                <label class="form-label-modern">Nhân viên</label>
-                <select name="employeeId" class="form-select">
+                <label class="form-label-modern">
+                    <i class="fas fa-user"></i> Nhân viên <span class="text-danger">*</span>
+                </label>
+                <select name="employeeId" class="form-select" required>
                     <option value="">-- Chọn nhân viên --</option>
                     @foreach (var e in (IEnumerable<dynamic>)ViewBag.ActiveEmployees)
                     {
-                        <option value="@e.EmployeeID">@e.FullName (@e.EmployeeID)</option>
+                        <option value="@e.EmployeeID">
+                            @e.FullName (@e.EmployeeID) - @e.Position
+                        </option>
                     }
                 </select>
             </div>
             <div class="mb-3">
-                <label class="form-label-modern">Username</label>
-                <input type="text" name="username" class="form-control-modern" />
+                <label class="form-label-modern">
+                    <i class="fas fa-key"></i> Quyền tài khoản <span class="text-danger">*</span>
+                </label>
+                <select name="role" class="form-select" required>
+                    <option value="">-- Chọn quyền --</option>
+                    @foreach (var role in (IEnumerable<dynamic>)ViewBag.AvailableRoles)
+                    {
+                        <option value="@role.Value">@role.Text</option>
+                    }
+                </select>
+                <small class="form-text text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    MANAGER có quyền cao hơn EMPLOYEE. ADMIN không thể tạo từ đây.
+                </small>
             </div>
             <div class="mb-3">
-                <label class="form-label-modern">Mật khẩu</label>
-                <input type="password" name="password" class="form-control-modern" />
+                <label class="form-label-modern">
+                    <i class="fas fa-at"></i> Username <span class="text-danger">*</span>
+                </label>
+                <input type="text" name="username" class="form-control-modern" required 
+                       placeholder="Nhập tên đăng nhập..." />
+            </div>
+            <div class="mb-3">
+                <label class="form-label-modern">
+                    <i class="fas fa-lock"></i> Mật khẩu <span class="text-danger">*</span>
+                </label>
+                <input type="password" name="password" class="form-control-modern" required 
+                       placeholder="Nhập mật khẩu..." />
+                <small class="form-text text-muted">
+                    <i class="fas fa-shield-alt"></i> 
+                    Mật khẩu sẽ được mã hóa bảo mật.
+                </small>
             </div>
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary-modern"><i class="fas fa-save"></i> Lưu</button>
-                <a asp-action="Index" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Quay lại</a>
+                <button type="submit" class="btn btn-primary-modern">
+                    <i class="fas fa-save"></i> Tạo tài khoản
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </a>
             </div>
         </form>
     </div>

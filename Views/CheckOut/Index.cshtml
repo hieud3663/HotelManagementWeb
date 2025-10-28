@@ -1,4 +1,4 @@
-@model IEnumerable<HotelManagement.Models.HistoryCheckin>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.HistoryCheckin>
 
 @{
     ViewData["Title"] = "Check-out";
@@ -66,7 +66,7 @@
     <div class="card-header-modern d-flex justify-content-between align-items-center">
         <span><i class="fas fa-clipboard-check me-2"></i>Danh sách Chờ Check-out</span>
         <span class="badge-modern badge-warning-modern">
-            <i class="fas fa-list"></i> @Model.Count() phòng
+            <i class="fas fa-list"></i> @Model.TotalCount phòng
         </span>
     </div>
     <div class="card-body-modern">
@@ -272,71 +272,12 @@
 {
     var invoice = item.ReservationForm?.Invoices?.FirstOrDefault();
     
-    @* Chỉ hiển thị modal cho phòng chưa có invoice *@
-    @* @if (invoice == null) *@
-    @if (false) // Tắt thanh toán trước vì tôi quá mệt
-    {
-        <div class="modal fade" id="paymentModal-@item.ReservationFormID" tabindex="-1" aria-labelledby="paymentModalLabel-@item.ReservationFormID" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title" id="paymentModalLabel-@item.ReservationFormID">
-                            <i class="fas fa-money-bill-wave"></i> Thanh toán trước
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form asp-action="PayThenCheckout" method="post">
-                        @Html.AntiForgeryToken()
-                        <div class="modal-body">
-                            <input type="hidden" name="reservationFormID" value="@item.ReservationFormID" />
-                            
-                            <div class="alert alert-info mb-3">
-                                <i class="fas fa-info-circle"></i>
-                                <strong>Thông tin phòng:</strong>
-                                <ul class="mb-0 mt-2">
-                                    <li>Phòng: <strong>@item.ReservationForm?.RoomID</strong></li>
-                                    <li>Khách: <strong>@item.ReservationForm?.Customer?.FullName</strong></li>
-                                    <li>Check-out dự kiến: <strong>@item.ReservationForm?.CheckOutDate.ToString("dd/MM/yyyy HH:mm")</strong></li>
-                                </ul>
-                            </div>
-                            
-                            <div class="alert alert-warning mb-3">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <strong>Lưu ý:</strong>
-                                <ul class="mb-0 mt-2">
-                                    <li>Tiền phòng tính từ giờ check-in <strong>THỰC TẾ</strong> đến giờ checkout <strong>DỰ KIẾN</strong></li>
-                                    <li>Khách có thể ở đến <strong>@item.ReservationForm?.CheckOutDate.ToString("dd/MM/yyyy HH:mm")</strong></li>
-                                    <li>Nếu trả phòng muộn sẽ tính <strong class="text-danger">phí phụ thu</strong></li>
-                                </ul>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">
-                                    <i class="fas fa-credit-card"></i> Phương thức thanh toán <span class="text-danger">*</span>
-                                </label>
-                                <select name="paymentMethod" class="form-select" required>
-                                    <option value="">-- Chọn phương thức thanh toán --</option>
-                                    <option value="CASH">💵 Tiền mặt</option>
-                                    <option value="CARD">💳 Thẻ</option>
-                                    <option value="TRANSFER">🏦 Chuyển khoản</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                <i class="fas fa-times"></i> Hủy
-                            </button>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-check-circle"></i> Xác nhận thanh toán
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    }
+    @* Modal đã được tắt vì tính năng thanh toán trước không cần thiết *@
 }
 
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)
 
 <!-- Statistics -->
 @if (Model.Any())

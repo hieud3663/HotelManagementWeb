@@ -20,13 +20,17 @@ namespace HotelManagement.Controllers
         }
 
         // GET: Employee
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             
-            var employees = await _context.Employees
+            var query = _context.Employees
                 .Where(e => e.IsActivate == "ACTIVATE")
-                .ToListAsync();
+                .OrderBy(e => e.FullName);
+            
+            var employees = await PagedList<Employee>.CreateAsync(query, page, pageSize);
+            
+            ViewBag.PageSize = pageSize;
             return View(employees);
         }
 

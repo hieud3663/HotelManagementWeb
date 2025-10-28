@@ -1,0 +1,252 @@
+@model dynamic
+
+@{
+    var currentPage = Model.CurrentPage;
+    var totalPages = Model.TotalPages;
+    var hasPrevious = Model.HasPrevious;
+    var hasNext = Model.HasNext;
+    var totalCount = Model.TotalCount;
+    var pageSize = Model.PageSize;
+    
+    // Tính toán thông tin hiển thị
+    var startItem = (currentPage - 1) * pageSize + 1;
+    var endItem = Math.Min(currentPage * pageSize, totalCount);
+    
+    Func<int, int, string> buildUrl = (page, size) => {
+        var queryParams = new List<string>();
+        
+        if (ViewBag.SearchTerm != null) queryParams.Add($"searchTerm={ViewBag.SearchTerm}");
+        if (ViewBag.PaymentStatus != null) queryParams.Add($"paymentStatus={ViewBag.PaymentStatus}");
+        if (ViewBag.SearchString != null) queryParams.Add($"searchString={ViewBag.SearchString}");
+        if (ViewBag.CategoryFilter != null) queryParams.Add($"categoryFilter={ViewBag.CategoryFilter}");
+        if (ViewBag.PhoneNumber != null) queryParams.Add($"phoneNumber={ViewBag.PhoneNumber}");
+        if (ViewBag.CustomerName != null) queryParams.Add($"customerName={ViewBag.CustomerName}");
+        if (ViewBag.ReservationId != null) queryParams.Add($"reservationId={ViewBag.ReservationId}");
+        
+        queryParams.Add($"page={page}");
+        queryParams.Add($"pageSize={size}");
+        
+        return "?" + string.Join("&", queryParams);
+    };
+}
+
+<div class="pagination-container">
+        <!-- Thông tin phân trang -->
+        <div class="pagination-info mb-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Hiển thị @startItem - @endItem trong tổng số @totalCount mục
+                    </small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        Trang @currentPage / @totalPages
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        @if (totalPages > 1)
+        {
+        <nav aria-label="Phân trang">
+            <ul class="pagination justify-content-center">
+                <!-- Nút Trang đầu -->
+                @if (hasPrevious)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="@buildUrl(1, pageSize)" aria-label="Trang đầu">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="@buildUrl(currentPage - 1, pageSize)" aria-label="Trang trước">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            <i class="fas fa-angle-double-left"></i>
+                        </span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            <i class="fas fa-angle-left"></i>
+                        </span>
+                    </li>
+                }
+
+                <!-- Các số trang -->
+                @{
+                    var startPage = Math.Max(1, currentPage - 2);
+                    var endPage = Math.Min(totalPages, currentPage + 2);
+                    
+                    // Điều chỉnh để luôn hiển thị 5 trang (nếu có thể)
+                    if (endPage - startPage < 4)
+                    {
+                        if (startPage == 1)
+                        {
+                            endPage = Math.Min(totalPages, startPage + 4);
+                        }
+                        else if (endPage == totalPages)
+                        {
+                            startPage = Math.Max(1, endPage - 4);
+                        }
+                    }
+                }
+
+                @for (int i = startPage; i <= endPage; i++)
+                {
+                    if (i == currentPage)
+                    {
+                        <li class="page-item active">
+                            <span class="page-link">@i</span>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="@buildUrl(i, pageSize)">@i</a>
+                        </li>
+                    }
+                }
+
+                <!-- Nút Trang sau -->
+                @if (hasNext)
+                {
+                    <li class="page-item">
+                        <a class="page-link" href="@buildUrl(currentPage + 1, pageSize)" aria-label="Trang sau">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="@buildUrl(totalPages, pageSize)" aria-label="Trang cuối">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            <i class="fas fa-angle-right"></i>
+                        </span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            <i class="fas fa-angle-double-right"></i>
+                        </span>
+                    </li>
+                }
+            </ul>
+        </nav>
+        }
+        else
+        {
+            <div class="text-center text-muted py-3">
+                <small><i class="fas fa-info-circle"></i> Tất cả dữ liệu đã được hiển thị trên một trang</small>
+            </div>
+        }
+
+        <!-- Tùy chọn số mục trên trang -->
+        <div class="pagination-size-selector mt-3 text-center">
+            <small class="text-muted me-2">Hiển thị:</small>
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="@buildUrl(1, 10)" class="btn @(pageSize == 10 ? "btn-primary" : "btn-outline-secondary") btn-sm">10</a>
+                <a href="@buildUrl(1, 25)" class="btn @(pageSize == 25 ? "btn-primary" : "btn-outline-secondary") btn-sm">25</a>
+                <a href="@buildUrl(1, 50)" class="btn @(pageSize == 50 ? "btn-primary" : "btn-outline-secondary") btn-sm">50</a>
+                <a href="@buildUrl(1, 100)" class="btn @(pageSize == 100 ? "btn-primary" : "btn-outline-secondary") btn-sm">100</a>
+            </div>
+        </div>
+    </div>
+
+<style>
+    .pagination-container {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .pagination-info {
+        background-color: #fff;
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .pagination .page-link {
+        color: #007bff;
+        border-color: #dee2e6;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .pagination .page-link:hover {
+        color: #0056b3;
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: #fff;
+    }
+
+    .pagination .page-item.disabled .page-link {
+        color: #6c757d;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
+
+    .pagination-size-selector .btn {
+        min-width: 40px;
+    }
+
+    .pagination-size-selector .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .pagination-size-selector .btn-outline-secondary {
+        color: #6c757d;
+        border-color: #6c757d;
+    }
+
+    .pagination-size-selector .btn-outline-secondary:hover {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .pagination-container {
+            padding: 0.5rem;
+        }
+        
+        .pagination-info .row {
+            text-align: center;
+        }
+        
+        .pagination-info .col-md-6 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .pagination .page-link {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .pagination-size-selector .btn {
+            min-width: 35px;
+            font-size: 0.8rem;
+        }
+    }
+</style>

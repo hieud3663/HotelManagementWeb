@@ -21,7 +21,7 @@ namespace HotelManagement.Controllers
 
         // REMOVED: CalculateHourlyFee() - Không còn cần tính phí theo bậc thang
 
-        public async Task<IActionResult> Index(string? phoneNumber = null, string? customerName = null, string? reservationId = null)
+        public async Task<IActionResult> Index(string? phoneNumber = null, string? customerName = null, string? reservationId = null, int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             
@@ -54,13 +54,14 @@ namespace HotelManagement.Controllers
                 query = query.Where(h => h.ReservationFormID.Contains(reservationId));
             }
 
-            var checkedInReservations = await query
-                .OrderByDescending(h => h.CheckInDate)
-                .ToListAsync();
+            query = query.OrderByDescending(h => h.CheckInDate);
+
+            var checkedInReservations = await PagedList<HistoryCheckin>.CreateAsync(query, page, pageSize);
 
             ViewBag.PhoneNumber = phoneNumber;
             ViewBag.CustomerName = customerName;
             ViewBag.ReservationId = reservationId;
+            ViewBag.PageSize = pageSize;
 
             return View(checkedInReservations);
         }

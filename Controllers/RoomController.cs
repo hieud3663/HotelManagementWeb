@@ -20,17 +20,19 @@ namespace HotelManagement.Controllers
             return HttpContext.Session.GetString("UserID") != null;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
-            var rooms = await _context.Rooms
+            var query = _context.Rooms
                 .Include(r => r.RoomCategory)
                 .ThenInclude(rc => rc!.Pricings)
                 .Where(r => r.IsActivate == "ACTIVATE")
-                .ToListAsync();
+                .OrderBy(r => r.RoomID);
 
-            // Lấy thông tin khách hàng đang ở phòng
+            var rooms = await PagedList<Room>.CreateAsync(query, page, pageSize);
+
+            // Lấy thông tin khách hàng đang ở phòng cho từng phòng trong trang hiện tại
             var roomsWithCustomer = new List<object>();
             foreach (var room in rooms)
             {
@@ -70,6 +72,7 @@ namespace HotelManagement.Controllers
             }
 
             ViewBag.RoomsWithCustomer = roomsWithCustomer;
+            ViewBag.PageSize = pageSize;
             return View(rooms);
         }
 

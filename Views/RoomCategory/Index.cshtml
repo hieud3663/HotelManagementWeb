@@ -1,4 +1,4 @@
-@model IEnumerable<HotelManagement.Models.RoomCategory>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.RoomCategory>
 
 @{
     ViewData["Title"] = "Quản lý Loại phòng & Giá";
@@ -182,3 +182,6 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)

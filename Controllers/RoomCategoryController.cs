@@ -21,16 +21,18 @@ namespace HotelManagement.Controllers
         }
 
         // GET: RoomCategory
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
-            var categories = await _context.RoomCategories
+            var query = _context.RoomCategories
                 .Include(rc => rc.Pricings)
                 .Include(rc => rc.Rooms)
-                .OrderBy(rc => rc.RoomCategoryName)
-                .ToListAsync();
+                .OrderBy(rc => rc.RoomCategoryName);
 
+            var categories = await PagedList<RoomCategory>.CreateAsync(query, page, pageSize);
+            
+            ViewBag.PageSize = pageSize;
             return View(categories);
         }
 

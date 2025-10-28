@@ -1,4 +1,4 @@
-@model IEnumerable<HotelManagement.Models.Customer>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.Customer>
 
 @{
     ViewData["Title"] = "Quản lý Khách hàng";
@@ -28,7 +28,7 @@
                 <i class="fas fa-users"></i>
             </div>
             <div class="stats-title">TỔNG KHÁCH HÀNG</div>
-            <div class="stats-value">@Model.Count()</div>
+            <div class="stats-value">@Model.TotalCount</div>
         </div>
     </div>
 </div>
@@ -91,3 +91,6 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)

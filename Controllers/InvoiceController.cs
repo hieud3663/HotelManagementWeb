@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HotelManagement.Data;
+using HotelManagement.Models;
 
 namespace HotelManagement.Controllers
 {
@@ -18,28 +19,27 @@ namespace HotelManagement.Controllers
             return HttpContext.Session.GetString("UserID") != null;
         }
 
-        public async Task<IActionResult> Index(string searchTerm, string paymentStatus)
+        public async Task<IActionResult> Index(string searchTerm, string paymentStatus, int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
 
-            var invoices = await _context.Invoices
+            var query = _context.Invoices
                 .Include(i => i.ReservationForm)
                 .ThenInclude(r => r!.Customer)
                 .Include(i => i.ReservationForm)
                 .ThenInclude(r => r!.Room)
-                .OrderByDescending(i => i.InvoiceDate)
-                .ToListAsync();
+                .AsQueryable();
 
             // Apply search filter if searchTerm is provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 searchTerm = searchTerm.Trim().ToLower();
-                invoices = invoices.Where(i =>
+                query = query.Where(i =>
                     i.InvoiceID.ToLower().Contains(searchTerm) ||
-                    (i.ReservationForm?.RoomID?.ToLower().Contains(searchTerm) ?? false) ||
-                    (i.ReservationForm?.Customer?.FullName?.ToLower().Contains(searchTerm) ?? false) ||
-                    (i.ReservationFormID?.ToLower().Contains(searchTerm) ?? false)
-                ).ToList();
+                    (i.ReservationForm!.RoomID!.ToLower().Contains(searchTerm)) ||
+                    (i.ReservationForm!.Customer!.FullName!.ToLower().Contains(searchTerm)) ||
+                    (i.ReservationFormID!.ToLower().Contains(searchTerm))
+                );
                 
                 ViewBag.SearchTerm = searchTerm;
             }
@@ -49,16 +49,21 @@ namespace HotelManagement.Controllers
             {
                 if (paymentStatus.ToLower() == "paid")
                 {
-                    invoices = invoices.Where(i => i.IsPaid == true).ToList();
+                    query = query.Where(i => i.IsPaid == true);
                 }
                 else if (paymentStatus.ToLower() == "unpaid")
                 {
-                    invoices = invoices.Where(i => i.IsPaid == false).ToList();
+                    query = query.Where(i => i.IsPaid == false);
                 }
                 
                 ViewBag.PaymentStatus = paymentStatus.ToLower();
             }
 
+            // Apply ordering at the end
+            query = query.OrderByDescending(i => i.InvoiceDate);
+
+            var invoices = await PagedList<Invoice>.CreateAsync(query, page, pageSize);
+            ViewBag.PageSize = pageSize;
             return View(invoices);
         }
 

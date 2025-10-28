@@ -20,19 +20,20 @@ namespace HotelManagement.Controllers
             return HttpContext.Session.GetString("UserID") != null;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             
-            var reservations = await _context.ReservationForms
+            var query = _context.ReservationForms
                 .Include(r => r.Customer)
                 .Include(r => r.Room)
                 .ThenInclude(ro => ro!.RoomCategory)
                 .Include(r => r.Employee)
                 .Include(r => r.HistoryCheckin)
                 .Where(r => r.IsActivate == "ACTIVATE")
-                .OrderByDescending(r => r.ReservationDate)
-                .ToListAsync();
+                .OrderByDescending(r => r.ReservationDate);
+            
+            var reservations = await PagedList<ReservationForm>.CreateAsync(query, page, pageSize);
             
             // Đánh dấu phiếu đặt phòng quá hạn
             ViewBag.OverdueReservations = reservations
@@ -40,6 +41,7 @@ namespace HotelManagement.Controllers
                 .Select(r => r.ReservationFormID)
                 .ToHashSet();
             
+            ViewBag.PageSize = pageSize;
             return View(reservations);
         }
 

@@ -1,11 +1,11 @@
-@model IEnumerable<HotelManagement.Models.User>
+@model HotelManagement.Models.PagedList<HotelManagement.Models.User>
 
 @{
-    ViewData["Title"] = "Quản lý tài khoản Lễ tân";
+    ViewData["Title"] = "Quản lý tài khoản";
 }
 
 <div class="page-header fade-in-up">
-    <h1><i class="fas fa-user-cog"></i> Quản lý tài khoản Lễ tân</h1>
+    <h1><i class="fas fa-user-cog"></i> Quản lý tài khoản</h1>
     <p>Chỉ MANAGER/ADMIN có quyền truy cập</p>
 </div>
 
@@ -26,7 +26,7 @@
 
 <div class="card-modern">
     <div class="card-header-modern">
-        <i class="fas fa-list me-2"></i>Danh sách tài khoản lễ tân
+        <i class="fas fa-list me-2"></i>Danh sách tài khoản (@Model.TotalCount tài khoản)
     </div>
     <div class="card-body-modern">
         <div class="table-responsive">
@@ -36,6 +36,8 @@
                         <th>Mã</th>
                         <th>Username</th>
                         <th>Nhân viên</th>
+                        <th>Chức vụ</th>
+                        <th>Quyền</th>
                         <th>Trạng thái</th>
                         <th class="text-end">Thao tác</th>
                     </tr>
@@ -47,6 +49,31 @@
                         <td>@u.UserID</td>
                         <td>@u.Username</td>
                         <td>@u.Employee?.FullName (@u.EmployeeID)</td>
+                        <td>
+                            <span class="badge-modern badge-info-modern">
+                                @u.Employee?.Position
+                            </span>
+                        </td>
+                        <td>
+                            @if (u.Role == "MANAGER")
+                            {
+                                <span class="badge-modern badge-warning-modern">
+                                    <i class="fas fa-crown"></i> MANAGER
+                                </span>
+                            }
+                            else if (u.Role == "EMPLOYEE")
+                            {
+                                <span class="badge-modern badge-primary-modern">
+                                    <i class="fas fa-user"></i> EMPLOYEE
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge-modern badge-secondary-modern">
+                                    @u.Role
+                                </span>
+                            }
+                        </td>
                         <td>
                             @if (u.IsActivate == "ACTIVATE")
                             {
@@ -79,5 +106,8 @@
         </div>
     </div>
  </div>
+
+<!-- Pagination -->
+@await Html.PartialAsync("_Pagination", Model)
 
 

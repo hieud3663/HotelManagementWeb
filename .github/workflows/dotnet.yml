@@ -1,4 +1,4 @@
-name: .NET
+name: .NET Docker CI/CD
 
 on:
   push:
@@ -7,41 +7,72 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-    runs-on: self-hosted 
-    
-    services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: YourStrong@Passw0rd
-        ports:
-          - 1433:1433
-        options: >-
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+  build-and-deploy:
+    runs-on: self-hosted
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.0.x
-    
-    - name: Restore dependencies
-      run: dotnet restore
-    
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
-    
-    - name: Publish
-      run: dotnet publish --no-build --configuration Release --output ./publish
-    
-    - name: Deploy locally
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Stop existing containers
       run: |
-        sudo cp -r ./publish/* /var/www/hotelmanagement/
-        sudo systemctl restart hotelmanagement
+        cd $GITHUB_WORKSPACE
+        docker-compose down || true
+
+    - name: Remove old images (optional - giải phóng dung lượng)
+      run: |
+        docker image prune -af --filter "label=project=hotelmanagement" || true
+
+    - name: Build and start Docker containers
+      run: |
+        cd $GITHUB_WORKSPACE
+        docker-compose up -d --build
+
+    - name: Wait for application to be ready
+      run: |
+        echo "⏳ Đợi ứng dụng khởi động..."
+        sleep 30
+        
+    - name: Check container status
+      run: |
+        echo "📊 Trạng thái containers:"
+        docker-compose ps
+        
+    - name: Show application logs
+      run: |
+        echo "📝 Logs của webapp:"
+        docker-compose logs --tail=50 webapp
+
+    - name: Health check
+      run: |
+        echo "🏥 Kiểm tra health..."
+        max_attempts=10
+        attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+          if curl -f http://localhost:5153/health 2>/dev/null; then
+            echo "✅ Application is healthy!"
+            exit 0
+          fi
+          
+          attempt=$((attempt + 1))
+          echo "⏳ Attempt $attempt/$max_attempts failed, retrying in 5s..."
+          sleep 5
+        done
+        
+        echo "❌ Health check failed after $max_attempts attempts"
+        docker-compose logs webapp
+        exit 1
+
+    - name: Cleanup old Docker resources
+      if: success()
+      run: |
+        echo "🧹 Dọn dẹp Docker resources..."
+        docker image prune -af --filter "until=24h"
+        docker volume prune -f
+
+    - name: Send notification on failure
+      if: failure()
+      run: |
+        echo "❌ Deploy failed! Check logs above."
+        docker-compose logs --tail=100 webapp

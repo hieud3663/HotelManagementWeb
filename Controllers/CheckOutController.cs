@@ -252,7 +252,7 @@ namespace HotelManagement.Controllers
             try
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
-                
+
                 // Gọi SP để xác nhận thanh toán
                 // SP sẽ cập nhật isPaid = 1, paymentDate, paymentMethod
                 var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID!);
@@ -273,6 +273,65 @@ namespace HotelManagement.Controllers
             }
 
             return RedirectToAction("Payment", new { invoiceID });
+        }
+
+        public record WebHookRequest(string InvoiceID, string PaymentMethod, string employeeID, decimal amount);
+
+        // Xác nhận thanh toán cho invoice -- webhook
+        [HttpPost("webhook/confirm-payment")]
+        public async Task<IActionResult> WebHookConfirmPayment([FromBody] WebHookRequest request)
+        {
+            var api_key = HttpContext.Request.Headers["x-api-key"].FirstOrDefault();
+            var expected_api_key = Environment.GetEnvironmentVariable("WEBHOOK_API_KEY");
+            if (api_key != expected_api_key)
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var invoiceID = request.InvoiceID;
+                var paymentMethod = request.PaymentMethod;
+                string employeeID = request.employeeID;
+                decimal amount = request.amount;
+
+                // lấy thông tin hóa đơn
+                var invoice = await _context.Invoices
+                    .FirstOrDefaultAsync(i => i.InvoiceID == invoiceID);
+
+                if (invoice == null)
+                {
+                    TempData["Error"] = "Không tìm thấy hóa đơn.";
+                    return BadRequest(new { status = "failed", message = TempData["Error"], success = false });
+                }
+
+                // Kiểm tra số tiền thanh toán
+                if (amount <= 0 || amount != invoice.TotalAmount)
+                {
+                    TempData["Error"] = "Số tiền thanh toán không hợp lệ.";
+                    return BadRequest(new { status = "failed", message = TempData["Error"], success = false });
+                }
+
+                // Gọi SP để xác nhận thanh toán
+                // SP sẽ cập nhật isPaid = 1, paymentDate, paymentMethod
+                var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID!);
+
+                if (result != null && result.Status == "PAYMENT_CONFIRMED")
+                {
+                    TempData["Success"] = "Thanh toán thành công! Phòng đã được giải phóng.";
+                    return Ok(new { status = "success", message = TempData["Success"], success = true });
+                }
+                else
+                {
+                    TempData["Error"] = result?.Status ?? "Không thể xác nhận thanh toán. Vui lòng thử lại.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
+            }
+
+            return BadRequest(new { status = "failed" , message = TempData["Error"] , success = false });
         }
 
         // LUỒNG 2: THANH TOÁN TRƯỚC (Pay Then Checkout)

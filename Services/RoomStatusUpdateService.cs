@@ -11,7 +11,7 @@ namespace HotelManagement.Services
     {
         private readonly IServiceProvider _services;
         private readonly ILogger<RoomStatusUpdateService> _logger;
-        private readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(30);
+        private readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(5);
 
         public RoomStatusUpdateService(
             IServiceProvider services,

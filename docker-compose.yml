@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # ASP.NET Core App
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hotelmanagement-app
+    ports:
+      - "5153:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=hotelmanagement.c74yqsk0gktd.ap-southeast-1.rds.amazonaws.com,1433;Database=HotelManagement;User Id=admin;Password=Dangnhapmk123;Integrated Security=False;TrustServerCertificate=True;MultipleActiveResultSets=true;
+      - WEBHOOK_API_KEY=123456789
+    networks:
+      - hotel-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: hotelmanagement-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - webapp
+    networks:
+      - hotel-network
+    restart: unless-stopped
+
+networks:
+  hotel-network:
+    driver: bridge

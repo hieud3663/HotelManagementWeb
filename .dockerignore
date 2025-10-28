@@ -1,0 +1,24 @@
+# Build outputs
+bin/
+obj/
+publish/
+out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+docs/
+
+# CI/CD
+.github/
+
+# Node modules (nếu có)
+node_modules/

@@ -24,7 +24,7 @@ namespace HotelManagement.Controllers
         public async Task<IActionResult> Index(string? phoneNumber = null, string? customerName = null, string? reservationId = null, int page = 1, int pageSize = 10)
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
-            
+
             // Lấy danh sách phòng đã check-in nhưng chưa check-out
             var query = _context.HistoryCheckins
                 .Include(h => h.ReservationForm)
@@ -88,15 +88,15 @@ namespace HotelManagement.Controllers
                 return NotFound();
             }
 
-            
+
             var actualCheckInDate = reservation.HistoryCheckin?.CheckInDate ?? reservation.CheckInDate;
             var actualCheckOutDate = DateTime.Now; // Checkout thực tế = hiện tại
-            
+
             var unitPrice = reservation.UnitPrice;
             var priceUnit = reservation.PriceUnit;
 
             var actualMinutes = (actualCheckOutDate - actualCheckInDate).TotalMinutes;
-            
+
             decimal timeUnits;
             if (priceUnit == "DAY")
             {
@@ -106,9 +106,9 @@ namespace HotelManagement.Controllers
             {
                 timeUnits = (decimal)Math.Ceiling(actualMinutes / 60.0);
             }
-            
-            if (timeUnits < 1) timeUnits = 1; 
-            
+
+            if (timeUnits < 1) timeUnits = 1;
+
             decimal roomCharge = unitPrice * timeUnits;
 
             // ============================================================================
@@ -116,7 +116,7 @@ namespace HotelManagement.Controllers
             // ============================================================================
             var expectedCheckOutDate = reservation.CheckOutDate;
             var expectedMinutes = (expectedCheckOutDate - actualCheckInDate).TotalMinutes;
-            
+
             decimal expectedTimeUnits;
             if (priceUnit == "DAY")
             {
@@ -126,22 +126,22 @@ namespace HotelManagement.Controllers
             {
                 expectedTimeUnits = (decimal)Math.Ceiling(expectedMinutes / 60.0);
             }
-            
+
             if (expectedTimeUnits < 1) expectedTimeUnits = 1;
-            
+
             decimal expectedRoomCharge = unitPrice * expectedTimeUnits;
-            
+
             var servicesCharge = reservation.RoomUsageServices?.Sum(s => s.Quantity * s.UnitPrice) ?? 0;
-            
+
             var expectedSubTotal = expectedRoomCharge + servicesCharge;
             var expectedTaxAmount = expectedSubTotal * 0.1m;
             var expectedTotalAmount = expectedSubTotal + expectedTaxAmount;
             var expectedAmountDue = expectedTotalAmount - (decimal)reservation.RoomBookingDeposit;
 
-            var actualDuration = priceUnit == "HOUR" 
+            var actualDuration = priceUnit == "HOUR"
                 ? Math.Ceiling((actualCheckOutDate - actualCheckInDate).TotalHours)
                 : Math.Ceiling((actualCheckOutDate - actualCheckInDate).TotalDays);
-            
+
             ViewBag.UnitPrice = unitPrice;
             ViewBag.PriceUnit = priceUnit;
             ViewBag.TimeUnits = timeUnits;
@@ -149,7 +149,7 @@ namespace HotelManagement.Controllers
             ViewBag.ActualCheckOutDate = actualCheckOutDate;
             ViewBag.ActualDuration = actualDuration;
 
-            var subTotal = roomCharge + servicesCharge; 
+            var subTotal = roomCharge + servicesCharge;
             var taxAmount = subTotal * 0.1m; // VAT 10%
             var totalAmount = subTotal + taxAmount;
             var amountDue = totalAmount - (decimal)reservation.RoomBookingDeposit;
@@ -162,7 +162,7 @@ namespace HotelManagement.Controllers
             ViewBag.TotalAmount = Math.Round(totalAmount, 0);
             ViewBag.Deposit = Math.Round((decimal)reservation.RoomBookingDeposit, 0);
             ViewBag.AmountDue = Math.Round(amountDue, 0);
-            
+
             // ViewBag cho PAY_THEN_CHECKOUT (tính theo dự kiến)
             ViewBag.ExpectedRoomCharge = Math.Round(expectedRoomCharge, 0);
             ViewBag.ExpectedTimeUnits = expectedTimeUnits;
@@ -170,7 +170,7 @@ namespace HotelManagement.Controllers
             ViewBag.ExpectedTaxAmount = Math.Round(expectedTaxAmount, 0);
             ViewBag.ExpectedTotalAmount = Math.Round(expectedTotalAmount, 0);
             ViewBag.ExpectedAmountDue = Math.Round(expectedAmountDue, 0);
-            
+
             ViewBag.ExistingInvoice = existingInvoice;
             return View(reservation);
         }
@@ -278,14 +278,20 @@ namespace HotelManagement.Controllers
         public record WebHookRequest(string InvoiceID, string PaymentMethod, string employeeID, decimal amount);
 
         // Xác nhận thanh toán cho invoice -- webhook
-        [HttpPost("webhook/confirm-payment")]
+        [HttpPost("/api/webhook/confirm-payment")]  // ← Route tuyệt đối
         public async Task<IActionResult> WebHookConfirmPayment([FromBody] WebHookRequest request)
         {
             var api_key = HttpContext.Request.Headers["x-api-key"].FirstOrDefault();
             var expected_api_key = Environment.GetEnvironmentVariable("WEBHOOK_API_KEY");
+
             if (api_key != expected_api_key)
             {
-                return Unauthorized();
+                return Unauthorized(new
+                {
+                    status = "failed",
+                    message = "Invalid API Key",
+                    success = false
+                });
             }
 
             try
@@ -295,45 +301,66 @@ namespace HotelManagement.Controllers
                 string employeeID = request.employeeID;
                 decimal amount = request.amount;
 
-                // lấy thông tin hóa đơn
+                // Lấy thông tin hóa đơn
                 var invoice = await _context.Invoices
                     .FirstOrDefaultAsync(i => i.InvoiceID == invoiceID);
 
                 if (invoice == null)
                 {
-                    TempData["Error"] = "Không tìm thấy hóa đơn.";
-                    return BadRequest(new { status = "failed", message = TempData["Error"], success = false });
+                    return BadRequest(new
+                    {
+                        status = "failed",
+                        message = "Invoice not found",
+                        success = false
+                    });
                 }
 
                 // Kiểm tra số tiền thanh toán
                 if (amount <= 0 || amount != invoice.TotalAmount)
                 {
-                    TempData["Error"] = "Số tiền thanh toán không hợp lệ.";
-                    return BadRequest(new { status = "failed", message = TempData["Error"], success = false });
+                    return BadRequest(new
+                    {
+                        status = "failed",
+                        message = "Invalid payment amount",
+                        success = false
+                    });
                 }
 
                 // Gọi SP để xác nhận thanh toán
-                // SP sẽ cập nhật isPaid = 1, paymentDate, paymentMethod
-                var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID!);
+                var result = await _context.ConfirmPaymentSP(invoiceID, paymentMethod, employeeID);
 
                 if (result != null && result.Status == "PAYMENT_CONFIRMED")
                 {
-                    TempData["Success"] = "Thanh toán thành công! Phòng đã được giải phóng.";
-                    return Ok(new { status = "success", message = TempData["Success"], success = true });
+                    return Ok(new
+                    {
+                        status = "success",
+                        message = "Payment confirmed successfully",
+                        success = true,
+                        invoiceID = invoiceID
+                    });
                 }
                 else
                 {
-                    TempData["Error"] = result?.Status ?? "Không thể xác nhận thanh toán. Vui lòng thử lại.";
+                    return BadRequest(new
+                    {
+                        status = "failed",
+                        message = result?.Status ?? "Cannot confirm payment",
+                        success = false
+                    });
                 }
             }
             catch (Exception ex)
             {
-                TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new
+                {
+                    status = "error",
+                    message = ex.Message,
+                    success = false
+                });
             }
-
-            return BadRequest(new { status = "failed" , message = TempData["Error"] , success = false });
         }
 
+        
         // LUỒNG 2: THANH TOÁN TRƯỚC (Pay Then Checkout)
         // Bước 1: Thanh toán ngay (tính theo thời gian DỰ KIẾN)
         [HttpPost]
@@ -345,7 +372,7 @@ namespace HotelManagement.Controllers
             try
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
-                
+
                 // Gọi SP để tạo invoice ĐÃ THANH TOÁN
                 // SP tính tiền dựa trên thời gian DỰ KIẾN (expected checkout)
                 // Phòng vẫn giữ trạng thái ON_USE
@@ -379,7 +406,7 @@ namespace HotelManagement.Controllers
             try
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
-                
+
                 // Gọi SP để checkout thực tế
                 // SP sẽ tính phí phụ thu nếu checkout muộn hơn dự kiến
                 var result = await _context.ActualCheckout_AfterPrepayment(reservationFormID, employeeID!);
@@ -421,7 +448,7 @@ namespace HotelManagement.Controllers
             try
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
-                
+
                 // Gọi stored procedure để check-out
                 // SP sẽ tự động:
                 // - Kiểm tra điều kiện (đã check-in, chưa check-out)
@@ -434,16 +461,16 @@ namespace HotelManagement.Controllers
                 if (result != null)
                 {
                     TempData["Success"] = $"Check-out thành công! {result.CheckoutStatus}";
-                    
+
                     // Lấy invoice vừa tạo để redirect
                     var invoice = await _context.Invoices
                         .FirstOrDefaultAsync(i => i.ReservationFormID == reservationFormID);
-                    
+
                     if (invoice != null)
                     {
                         return RedirectToAction("Invoice", "Invoice", new { id = invoice.InvoiceID });
                     }
-                    
+
                     return RedirectToAction(nameof(Index));
                 }
                 else

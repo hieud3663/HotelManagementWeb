@@ -15,7 +15,10 @@ bin/
 obj/
 **/bin/
 **/obj/
-
+bin
+obj
+publish/
+out/
 # Visual Studio files
 .vs/
 *.suo

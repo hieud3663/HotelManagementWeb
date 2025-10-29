@@ -35,7 +35,7 @@ namespace HotelManagement.Controllers
 
             // Đánh dấu phiếu đặt phòng quá hạn
             ViewBag.OverdueReservations = pendingReservations
-                .Where(r => r.CheckOutDate < DateTime.Now)
+                .Where(r => r.CheckOutDate < DateTime.UtcNow.AddHours(7))
                 .Select(r => r.ReservationFormID)
                 .ToHashSet();
 

@@ -55,14 +55,14 @@ namespace HotelManagement.Services
 
                 try
                 {
-                    var startTime = DateTime.Now;
+                    var startTime = DateTime.UtcNow.AddHours(7);
                     _logger.LogInformation($"🔄 Bắt đầu cập nhật trạng thái phòng lúc {startTime:HH:mm:ss}");
 
                     await context.Database.ExecuteSqlRawAsync(
                         "EXEC sp_UpdateRoomStatusToReserved"
                     );
 
-                    var endTime = DateTime.Now;
+                    var endTime = DateTime.UtcNow.AddHours(7);
                     var duration = (endTime - startTime).TotalMilliseconds;
 
                     _logger.LogInformation($"✅ Cập nhật thành công trong {duration}ms");

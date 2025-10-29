@@ -90,7 +90,7 @@ namespace HotelManagement.Controllers
 
 
             var actualCheckInDate = reservation.HistoryCheckin?.CheckInDate ?? reservation.CheckInDate;
-            var actualCheckOutDate = DateTime.Now;
+            var actualCheckOutDate = DateTime.UtcNow.AddHours(7);
 
             var unitPrice = reservation.UnitPrice;
             var priceUnit = reservation.PriceUnit;

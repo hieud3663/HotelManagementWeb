@@ -38,13 +38,13 @@ namespace HotelManagement.Controllers
         {
             try
             {
-                var startTime = DateTime.Now;
+                var startTime = DateTime.UtcNow.AddHours(7);
                 
                 await _context.Database.ExecuteSqlRawAsync(
                     "EXEC sp_UpdateRoomStatusToReserved"
                 );
 
-                var duration = (DateTime.Now - startTime).TotalMilliseconds;
+                var duration = (DateTime.UtcNow.AddHours(7) - startTime).TotalMilliseconds;
 
                 var reservedRooms = await _context.Rooms
                     .Where(r => r.RoomStatus == "RESERVED")
@@ -55,7 +55,7 @@ namespace HotelManagement.Controllers
                     success = true,
                     message = $"Cập nhật thành công trong {duration}ms",
                     reservedRoomCount = reservedRooms,
-                    timestamp = DateTime.Now
+                    timestamp = DateTime.UtcNow.AddHours(7)
                 });
             }
             catch (Exception ex)

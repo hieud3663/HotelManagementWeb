@@ -135,15 +135,15 @@
                             int? daysDiff = null;
                             if (unit == "HOUR")
                             {
-                                daysDiff = (int)Math.Ceiling((DateTime.Now - item.CheckInDate).TotalHours);
+                                daysDiff = (int)Math.Ceiling((DateTime.UtcNow.AddHours(7) - item.CheckInDate).TotalHours);
                             }
                             else
                             {
-                                daysDiff = (int)Math.Ceiling((DateTime.Now - item.CheckInDate).TotalDays);
+                                daysDiff = (int)Math.Ceiling((DateTime.UtcNow.AddHours(7) - item.CheckInDate).TotalDays);
                             }
 
                             var duration = (unit == "HOUR") ? daysDiff : daysDiff * 24;
-                            var isOverdue = DateTime.Now > item.ReservationForm!.CheckOutDate;
+                            var isOverdue = DateTime.UtcNow.AddHours(7) > item.ReservationForm!.CheckOutDate;
                             
                             // Kiểm tra trạng thái Invoice và Checkout
                             var invoice = item.ReservationForm?.Invoices?.FirstOrDefault();
@@ -282,7 +282,7 @@
 <!-- Statistics -->
 @if (Model.Any())
 {
-    var overdueCount = Model.Count(x => DateTime.Now > x.ReservationForm!.CheckOutDate);
+    var overdueCount = Model.Count(x => DateTime.UtcNow.AddHours(7) > x.ReservationForm!.CheckOutDate);
     var normalCount = Model.Count() - overdueCount;
     
     <div class="row g-4 mt-3">

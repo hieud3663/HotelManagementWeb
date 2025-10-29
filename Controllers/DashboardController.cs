@@ -37,7 +37,7 @@ namespace HotelManagement.Controllers
                 .CountAsync();
 
             // Doanh thu tháng này
-            var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var firstDayOfMonth = new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
             var totalRevenue = await _context.Invoices
                 .Where(i => i.InvoiceDate >= firstDayOfMonth)
                 .SumAsync(i => i.NetDue ?? 0);

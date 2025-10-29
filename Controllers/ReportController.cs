@@ -24,7 +24,7 @@ namespace HotelManagement.Controllers
 
             // Thống kê nhanh cho dashboard báo cáo
             var today = DateTime.Today;
-            var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var firstDayOfMonth = new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
 
             // Doanh thu tháng này
             ViewBag.MonthlyRevenue = await _context.Invoices
@@ -102,7 +102,7 @@ namespace HotelManagement.Controllers
             // Mặc định: tháng hiện tại
             if (!fromDate.HasValue || !toDate.HasValue)
             {
-                fromDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                fromDate = new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
                 toDate = fromDate.Value.AddMonths(1).AddDays(-1);
             }
 
@@ -204,7 +204,7 @@ namespace HotelManagement.Controllers
             }
 
             // Mặc định: tháng hiện tại
-            fromDate ??= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            fromDate ??= new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
             toDate ??= fromDate.Value.AddMonths(1).AddDays(-1);
 
             ViewBag.FromDate = fromDate.Value.ToString("yyyy-MM-dd");
@@ -237,7 +237,7 @@ namespace HotelManagement.Controllers
                     .Select(c => (DateTime?)c.CheckOutDate)  
                     .FirstOrDefault();
             
-                var checkOutDate = actualCheckOut ?? h.ReservationForm?.CheckOutDate ?? DateTime.Now;
+                var checkOutDate = actualCheckOut ?? h.ReservationForm?.CheckOutDate ?? DateTime.UtcNow.AddHours(7);
             
                 var duration = (checkOutDate - h.CheckInDate).TotalDays;
             
@@ -259,7 +259,7 @@ namespace HotelManagement.Controllers
                     CheckIns = g.Count(),
                     TotalDays = g.Sum(h =>
                     {
-                        var checkout = h.ReservationForm?.CheckOutDate ?? DateTime.Now;
+                        var checkout = h.ReservationForm?.CheckOutDate ?? DateTime.UtcNow.AddHours(7);
                         var days = (checkout - h.CheckInDate).Days;
                         return days > 0 ? days : 1;
                     })
@@ -298,7 +298,7 @@ namespace HotelManagement.Controllers
                 .Where(rf => rf.HistoryCheckin != null && rf.Customer != null && rf.Room != null && rf.Room.RoomCategory != null)
                 .Select(rf =>
             {
-                var actualCheckOut = rf.HistoryCheckOut?.CheckOutDate ?? (rf.CheckOutDate == DateTime.MinValue ? DateTime.Now : rf.CheckOutDate);
+                var actualCheckOut = rf.HistoryCheckOut?.CheckOutDate ?? (rf.CheckOutDate == DateTime.MinValue ? DateTime.UtcNow.AddHours(7) : rf.CheckOutDate);
                 var minutes = (actualCheckOut - rf.HistoryCheckin.CheckInDate).TotalMinutes;
                 var unit = rf.PriceUnit ?? "DAY";
                 var quantity = 0;
@@ -372,7 +372,7 @@ namespace HotelManagement.Controllers
             }
 
             // Mặc định: tháng hiện tại
-            fromDate ??= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            fromDate ??= new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
             toDate ??= fromDate.Value.AddMonths(1).AddDays(-1);
 
             ViewBag.FromDate = fromDate.Value.ToString("yyyy-MM-dd");
@@ -411,7 +411,7 @@ namespace HotelManagement.Controllers
         [HttpGet]
         public async Task<JsonResult> GetRevenueChartData(int months = 6)
         {
-            var endDate = DateTime.Now;
+            var endDate = DateTime.UtcNow.AddHours(7);
             var startDate = endDate.AddMonths(-months);
 
             var invoices = await _context.Invoices
@@ -451,7 +451,7 @@ namespace HotelManagement.Controllers
         [HttpGet]
         public async Task<JsonResult> GetRoomOccupancyChartData()
         {
-            var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var firstDayOfMonth = new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
             var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
 
             var checkIns = await _context.HistoryCheckins
@@ -497,7 +497,7 @@ namespace HotelManagement.Controllers
         [HttpGet]
         public async Task<JsonResult> GetBookingTrendChartData(int days = 30)
         {
-            var endDate = DateTime.Now;
+            var endDate = DateTime.UtcNow.AddHours(7);
             var startDate = endDate.AddDays(-days);
 
             var reservations = await _context.ReservationForms
@@ -549,7 +549,7 @@ namespace HotelManagement.Controllers
         [HttpGet]
         public async Task<JsonResult> GetEmployeePerformanceChartData(int topN = 10)
         {
-            var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var firstDayOfMonth = new DateTime(DateTime.UtcNow.AddHours(7).Year, DateTime.UtcNow.AddHours(7).Month, 1);
             var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
 
             // Lấy số lượt check-in theo nhân viên

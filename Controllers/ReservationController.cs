@@ -37,7 +37,7 @@ namespace HotelManagement.Controllers
             
             // Đánh dấu phiếu đặt phòng quá hạn
             ViewBag.OverdueReservations = reservations
-                .Where(r => r.CheckOutDate < DateTime.Now && r.HistoryCheckin == null)
+                .Where(r => r.CheckOutDate < DateTime.UtcNow.AddHours(7) && r.HistoryCheckin == null)
                 .Select(r => r.ReservationFormID)
                 .ToHashSet();
             
@@ -115,7 +115,7 @@ namespace HotelManagement.Controllers
             reservation.EmployeeID = HttpContext.Session.GetString("EmployeeID")!;
 
             // Kiểm tra ngày nhận và ngày trả
-            if (reservation.CheckInDate < DateTime.Now)
+            if (reservation.CheckInDate < DateTime.UtcNow.AddHours(7))
             {
                 ModelState.AddModelError("CheckInDate", "Ngày nhận phòng phải lớn hơn hoặc bằng ngày hiện tại.");
             }

@@ -40,7 +40,7 @@
             </div>
             <div class="stats-title">QUÁ HẠN TRẢ PHÒNG</div>
             <div class="stats-value">
-                @Model.Count(h => h.ReservationForm != null && h.ReservationForm.CheckOutDate < DateTime.Now)
+                @Model.Count(h => h.ReservationForm != null && h.ReservationForm.CheckOutDate < DateTime.UtcNow.AddHours(7))
             </div>
         </div>
     </div>
@@ -73,8 +73,8 @@
                     <tbody>
                         @foreach (var item in Model)
                         {
-                            var daysDiff = (DateTime.Now - item.CheckInDate).Days;
-                            var isOverdue = item.ReservationForm != null && item.ReservationForm.CheckOutDate < DateTime.Now;
+                            var daysDiff = (DateTime.UtcNow.AddHours(7) - item.CheckInDate).Days;
+                            var isOverdue = item.ReservationForm != null && item.ReservationForm.CheckOutDate < DateTime.UtcNow.AddHours(7);
                             
                             <tr>
                                 <td>
@@ -107,7 +107,7 @@
                                 <td>
                                     @if (daysDiff == 0)
                                     {
-                                        var hours = (DateTime.Now - item.CheckInDate).Hours;
+                                        var hours = (DateTime.UtcNow.AddHours(7) - item.CheckInDate).Hours;
                                         <span class="badge-modern badge-success-modern">@hours giờ</span>
                                     }
                                     else

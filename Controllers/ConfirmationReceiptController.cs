@@ -86,7 +86,7 @@ namespace HotelManagement.Controllers
             {
                 ReceiptID = await _context.GenerateID("CR-", "ConfirmationReceipt"),
                 ReceiptType = "RESERVATION",
-                IssueDate = DateTime.Now,
+                IssueDate = DateTime.UtcNow.AddHours(7),
                 ReservationFormID = reservation.ReservationFormID,
                 CustomerName = reservation.Customer?.FullName ?? "",
                 CustomerPhone = reservation.Customer?.PhoneNumber ?? "",
@@ -101,7 +101,7 @@ namespace HotelManagement.Controllers
                 TotalAmount = null, // Sẽ tính sau khi có invoice
                 EmployeeName = reservation.Employee?.FullName,
                 Notes = $"Phiếu xác nhận đặt phòng - {reservation.ReservationFormID}",
-                QrCode = $"RESERVATION_{reservation.ReservationFormID}_{DateTime.Now:yyyyMMddHHmmss}"
+                QrCode = $"RESERVATION_{reservation.ReservationFormID}_{DateTime.UtcNow.AddHours(7):yyyyMMddHHmmss}"
             };
 
             // Lưu phiếu vào database
@@ -132,7 +132,7 @@ namespace HotelManagement.Controllers
             {
                 ReceiptID = await _context.GenerateID("CR-", "ConfirmationReceipt"),
                 ReceiptType = "CHECKIN",
-                IssueDate = DateTime.Now,
+                IssueDate = DateTime.UtcNow.AddHours(7),
                 ReservationFormID = reservation.ReservationFormID,
                 CustomerName = reservation.Customer?.FullName ?? "",
                 CustomerPhone = reservation.Customer?.PhoneNumber ?? "",
@@ -147,7 +147,7 @@ namespace HotelManagement.Controllers
                 TotalAmount = null, // Sẽ tính sau khi có invoice
                 EmployeeName = reservation.Employee?.FullName,
                 Notes = $"Phiếu xác nhận check-in - {reservation.ReservationFormID}",
-                QrCode = $"CHECKIN_{reservation.ReservationFormID}_{DateTime.Now:yyyyMMddHHmmss}"
+                QrCode = $"CHECKIN_{reservation.ReservationFormID}_{DateTime.UtcNow.AddHours(7):yyyyMMddHHmmss}"
             };
 
             // Lưu phiếu vào database
@@ -181,7 +181,7 @@ namespace HotelManagement.Controllers
             {
                 ReceiptID = await _context.GenerateID("CR-", "ConfirmationReceipt"),
                 ReceiptType = "CHECKOUT",
-                IssueDate = DateTime.Now,
+                IssueDate = DateTime.UtcNow.AddHours(7),
                 ReservationFormID = reservation.ReservationFormID,
                 InvoiceID = invoice?.InvoiceID,
                 CustomerName = reservation.Customer?.FullName ?? "",
@@ -197,7 +197,7 @@ namespace HotelManagement.Controllers
                 TotalAmount = invoice?.NetDue,
                 EmployeeName = reservation.Employee?.FullName,
                 Notes = $"Phiếu xác nhận check-out - {reservation.ReservationFormID}",
-                QrCode = $"CHECKOUT_{reservation.ReservationFormID}_{DateTime.Now:yyyyMMddHHmmss}"
+                QrCode = $"CHECKOUT_{reservation.ReservationFormID}_{DateTime.UtcNow.AddHours(7):yyyyMMddHHmmss}"
             };
 
             // Lưu phiếu vào database

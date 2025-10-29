@@ -131,7 +131,9 @@ namespace HotelManagement.Controllers
                 }
 
                 room.IsActivate = "ACTIVATE";
-                room.DateOfCreation = DateTime.Now;
+                room.DateOfCreation = DateTime.UtcNow.AddHours(7).AddMinutes(-1);
+                // Console.WriteLine(room.DateOfCreation);
+                // Console.ReadLine();
                 room.RoomStatus = "AVAILABLE";
 
                 _context.Add(room);
@@ -339,12 +341,12 @@ namespace HotelManagement.Controllers
                         .Include(rf => rf.Customer)
                         .Where(rf => rf.RoomID == room.RoomID && rf.IsActivate == "ACTIVATE")
                         .Where(rf => !_context.HistoryCheckins.Any(hc => hc.ReservationFormID == rf.ReservationFormID))
-                        .Where(rf => rf.CheckInDate > DateTime.Now)
+                        .Where(rf => rf.CheckInDate > DateTime.UtcNow.AddHours(7))
                         .OrderBy(rf => rf.CheckInDate)
                         .FirstOrDefaultAsync();
 
                     double? hoursUntilCheckIn = upcomingReservation != null
-                        ? (upcomingReservation.CheckInDate - DateTime.Now).TotalHours
+                        ? (upcomingReservation.CheckInDate - DateTime.UtcNow.AddHours(7)).TotalHours
                         : null;
 
                     roomsWithInfo.Add(new

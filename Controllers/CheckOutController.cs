@@ -235,7 +235,7 @@ namespace HotelManagement.Controllers
 
             if (invoice.IsPaid)
             {
-                TempData["Warning"] = "Hóa đơn này đã được thanh toán.";
+                TempData["Success"] = $"Hóa đơn {invoiceID} đã được thanh toán thành công qua {invoice.PaymentMethod} lúc {invoice.PaymentDate:dd/MM/yyyy HH:mm}!";
                 return RedirectToAction("Details", "Invoice", new { id = invoiceID });
             }
 

@@ -101,7 +101,7 @@
                                 <td class="text-end"><strong>@((Model.RoomCharge + Model.ServicesCharge).ToString("N0", System.Globalization.CultureInfo.InvariantCulture)) VNĐ</strong></td>
                             </tr>
                             <tr>
-                                <td><i class="fas fa-percent"></i> VAT (@Model.TaxRate.ToString("0.##")%)</td>
+                                <td><i class="fas fa-percent"></i> VAT (@((Model.TaxRate * 100).ToString("0.##"))%)</td>
                                 <td class="text-end">@Model.TaxAmount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) VNĐ</td>
                             </tr>
                             <tr>
@@ -190,12 +190,12 @@
                                 <i class="fas fa-money-bill-wave text-success"></i> Tiền mặt
                             </label>
                         </div>
-                        <div class="form-check mb-2">
+                        @* <div class="form-check mb-2">
                             <input class="form-check-input" type="radio" name="paymentMethod" value="CARD" id="card" required>
                             <label class="form-check-label" for="card">
                                 <i class="fas fa-credit-card text-primary"></i> Thẻ
                             </label>
-                        </div>
+                        </div> *@
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="paymentMethod" value="TRANSFER" id="transfer" required>
                             <label class="form-check-label" for="transfer">
@@ -205,7 +205,7 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success-modern" onclick="return confirm('Xác nhận đã nhận thanh toán?')">
+                        <button type="button" class="btn btn-success-modern" onclick="handlePaymentSubmit()">
                             <i class="fas fa-check-circle"></i> Xác nhận thanh toán
                         </button>
                         <a asp-action="Index" class="btn btn-secondary-modern">
@@ -225,7 +225,8 @@
                 <ul class="mb-0">
                     <li>Kiểm tra kỹ số tiền trước khi xác nhận</li>
                     <li>Chọn phương thức thanh toán phù hợp</li>
-                    <li>Sau khi thanh toán, khách sẽ nhận được hóa đơn</li>
+                    <li><strong>Chuyển khoản:</strong> Nhấn vào tùy chọn để hiển thị mã QR</li>
+                    <li>Sau khi chuyển khoản, nhấn F5 để cập nhật trạng thái</li>
                     @if (Model.CheckoutType == "CHECKOUT_THEN_PAY")
                     {
                         <li class="text-danger"><strong>Phòng sẽ tự động được giải phóng sau khi thanh toán</strong></li>
@@ -240,11 +241,165 @@
     </div>
 </div>
 
+<!-- Modal QR Code Chuyển khoản -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="qrCodeModalLabel">
+                    <i class="fas fa-qrcode"></i> Quét mã QR để chuyển khoản
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- QR Code -->
+                    <div class="col-md-6 text-center">
+                        <div class="p-3 bg-light rounded">
+                            <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid" style="max-width: 300px;">
+                            <p class="mt-3 mb-0">
+                                <small class="text-muted">Quét mã QR bằng ứng dụng ngân hàng</small>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Thông tin chuyển khoản -->
+                    <div class="col-md-6">
+                        <h5 class="mb-3"><i class="fas fa-info-circle"></i> Thông tin chuyển khoản</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">Ngân hàng:</label>
+                            <div class="fw-bold" id="bankName">Vietcombank</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">Số tài khoản:</label>
+                            <div class="fw-bold" id="accountNo">1234567890</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">Chủ tài khoản:</label>
+                            <div class="fw-bold" id="accountName">KHACH SAN ABC</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">Số tiền:</label>
+                            <div class="fw-bold text-danger fs-4" id="amountDue">@(amountDue.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)) VNĐ</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">Nội dung chuyển khoản:</label>
+                            <div class="alert alert-warning mb-0">
+                                <code class="fs-5 text-danger fw-bold" id="transferContent"></code>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mb-0">
+                            <small>
+                                <i class="fas fa-exclamation-circle"></i>
+                                <strong>Hướng dẫn:</strong>
+                                <ol class="mb-0 mt-2 ps-3">
+                                    <li>Quét mã QR hoặc chuyển khoản thủ công</li>
+                                    <li>Chuyển khoản đúng nội dung <strong>@Model.InvoiceID</strong></li>
+                                    <li>Sau khi chuyển khoản xong, nhấn nút <strong>"Kiểm tra trạng thái thanh toán"</strong> bên dưới</li>
+                                    <li>Hệ thống sẽ tự động xác nhận nếu đã nhận được tiền</li>
+                                </ol>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Đóng
+                </button>
+                <button type="button" class="btn btn-primary" onclick="refreshPage()">
+                    <i class="fas fa-sync-alt"></i> Kiểm tra trạng thái thanh toán
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        // Auto focus on payment method section
+        const invoiceID = '@Model.InvoiceID';
+        const amountDue = @amountDue.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(",", "");
+        
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Payment page loaded for invoice: @Model.InvoiceID');
+            
+            const transferRadio = document.getElementById('transfer');
+            if (transferRadio) {
+                transferRadio.addEventListener('change', function() {
+                    if (this.checked) {
+                        showQRCodeModal();
+                    }
+                });
+            }
         });
+
+        function handlePaymentSubmit() {
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+            
+            if (!paymentMethod) {
+                alert('Vui lòng chọn phương thức thanh toán!');
+                return;
+            }
+            
+            if (paymentMethod.value === 'TRANSFER') {
+                showQRCodeModal();
+                return; 
+            }
+            
+            if (confirm('Xác nhận đã nhận thanh toán bằng ' + (paymentMethod.value === 'CASH' ? 'tiền mặt' : 'thẻ') + '?')) {
+                document.querySelector('form').submit();
+            }
+        }
+
+        // Hiển thị modal QR Code
+        function showQRCodeModal() {
+            const bankCode = 'MB'; // MB Bank
+            const accountNo = '02226299999';
+            const accountName = 'DANG NGOC HIEU';
+            const amount = Math.round(amountDue);
+            const description = invoiceID.replace('-', '');
+            
+            // API VietQR: https://img.vietqr.io/image/{BANK_ID}-{ACCOUNT_NO}-{TEMPLATE}.png?amount={AMOUNT}&addInfo={DESCRIPTION}
+            const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNo}-compact2.jpg?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+                        
+            document.getElementById('qrCodeImage').src = qrUrl;
+            
+            $('#bankName').text('MB Bank');
+            $('#accountNo').text(accountNo);
+            $('#accountName').text(accountName);
+            $('#amountDue').text(amount.toLocaleString('vi-VN') + ' VNĐ');
+            $('#transferContent').text(description);
+
+            const modal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
+            modal.show();
+        }
+
+        // Hiển thị toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-3 shadow-lg`;
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                ${message}
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        function refreshPage() {
+            showToast('Đang kiểm tra trạng thái thanh toán...', 'info');
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        }
     </script>
 }

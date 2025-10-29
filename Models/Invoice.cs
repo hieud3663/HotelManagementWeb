@@ -84,7 +84,7 @@ namespace HotelManagement.Models
 
         // Helper properties for views
         [NotMapped]
-        public decimal TaxAmount => TotalDue.HasValue ? TotalDue.Value * (TaxRate / 100) : 0;
+        public decimal TaxAmount => TotalDue.HasValue ? TotalDue.Value * (TaxRate) : 0;
 
         [NotMapped]
         public decimal Deposit => RoomBookingDeposit;        

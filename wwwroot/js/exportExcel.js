@@ -112,7 +112,6 @@ const exportExcel = (idTable, title, fileName, from_date, to_date) => {
 
         ws.columns = lengths.map(len => ({ width: Math.min(Math.max(10, len + 2), 40) }));
 
-        // Xuất file
         const buffer = await wb.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), filename);
     });

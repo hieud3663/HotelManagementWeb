@@ -38,12 +38,10 @@
         clearError("dobError");
     }
 
-    // Nếu không hợp lệ, dừng lại
     if (!isValid) {
         return;
     }
 
-    // Nếu hợp lệ, gửi dữ liệu qua AJAX
     var formData = {
         FullName: fullName,
         Gender: form.find('[name="Gender"]').val(),

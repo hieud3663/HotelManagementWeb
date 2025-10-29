@@ -63,19 +63,16 @@ namespace HotelManagement.Controllers
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
                 
-                // Gọi stored procedure để check-in
-                // SP sẽ tự động kiểm tra điều kiện, tạo ID, cập nhật trạng thái phòng
                 var result = await _context.CheckInRoomSP(reservationFormID, employeeID!);
 
                 if (result != null)
                 {
-                    // Tạo phiếu xác nhận nhận phòng tự động
                     try
                     {
                         var receipt = await _context.CreateConfirmationReceiptSP(
                             "CHECKIN",
                             reservationFormID,
-                            null, // Chưa có invoice khi check-in
+                            null, 
                             employeeID!
                         );
                         
@@ -87,7 +84,6 @@ namespace HotelManagement.Controllers
                     }
                     catch (Exception exReceipt)
                     {
-                        // Nếu tạo phiếu lỗi thì vẫn báo check-in thành công
                         TempData["Success"] = $"Check-in thành công! Mã check-in: {result.HistoryCheckInID}. {result.CheckinStatus}";
                         TempData["Warning"] = $"Không thể tạo phiếu xác nhận: {exReceipt.Message}";
                     }
@@ -101,14 +97,12 @@ namespace HotelManagement.Controllers
             }
             catch (Exception ex)
             {
-                // Lỗi từ stored procedure (ví dụ: đã check-in rồi, phòng không available)
                 TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
             }
 
             return RedirectToAction(nameof(Index));
         }
 
-        // Xóa phiếu đặt phòng trong danh sách chờ check-in (soft delete)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
@@ -126,7 +120,6 @@ namespace HotelManagement.Controllers
                     return RedirectToAction("Index");
                 }
 
-                // Kiểm tra xem đã check-in chưa
                 var hasCheckedIn = await _context.HistoryCheckins
                     .AnyAsync(h => h.ReservationFormID == id);
 
@@ -136,7 +129,6 @@ namespace HotelManagement.Controllers
                     return RedirectToAction("Index");
                 }
 
-                // Soft delete
                 reservation.IsActivate = "DEACTIVATE";
                 _context.Update(reservation);
                 await _context.SaveChangesAsync();
@@ -155,7 +147,6 @@ namespace HotelManagement.Controllers
         {
             if (!CheckAuth()) return RedirectToAction("Login", "Auth");
             
-            // Lấy danh sách phòng đã check-in nhưng chưa check-out
             var checkedInReservations = await _context.HistoryCheckins
                 .Include(h => h.ReservationForm)
                 .ThenInclude(r => r!.Customer)

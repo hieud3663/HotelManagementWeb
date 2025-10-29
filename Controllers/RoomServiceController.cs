@@ -71,7 +71,6 @@ namespace HotelManagement.Controllers
             {
                 var employeeID = HttpContext.Session.GetString("EmployeeID");
                 
-                // Gọi stored procedure để thêm dịch vụ (bypass trigger conflict)
                 var result = await _context.AddRoomServiceSP(
                     reservationFormID,
                     hotelServiceId,
@@ -81,7 +80,6 @@ namespace HotelManagement.Controllers
 
                 if (result != null)
                 {
-                    // Hiển thị thông báo dựa trên action (INSERTED/UPDATED)
                     if (result.Action == "UPDATED")
                     {
                         TempData["Success"] = $" Cập nhật dịch vụ thành công! " +
@@ -101,7 +99,6 @@ namespace HotelManagement.Controllers
             }
             catch (Exception ex)
             {
-                // Lỗi từ stored procedure
                 TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
             }
 
@@ -158,7 +155,6 @@ namespace HotelManagement.Controllers
             }
             catch (Exception ex)
             {
-                // Lỗi từ stored procedure (VD: phòng đã checkout)
                 TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
             }
 

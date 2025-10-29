@@ -106,13 +106,11 @@ namespace HotelManagement.Controllers
                 toDate = fromDate.Value.AddMonths(1).AddDays(-1);
             }
 
-            // Đảm bảo toDate là cuối ngày
             toDate = toDate.Value.Date.AddDays(1).AddSeconds(-1);
 
             ViewBag.FromDate = fromDate.Value.ToString("yyyy-MM-dd");
             ViewBag.ToDate = toDate.Value.Date.ToString("yyyy-MM-dd");
 
-            // Lấy doanh thu từ hóa đơn
             var invoices = await _context.Invoices
                 .Include(i => i.ReservationForm)
                     .ThenInclude(r => r!.Customer)
@@ -122,7 +120,6 @@ namespace HotelManagement.Controllers
                 .Where(i => i.InvoiceDate >= fromDate && i.InvoiceDate <= toDate)
                 .ToListAsync();
 
-            // Tính toán thống kê
             ViewBag.TotalRevenue = invoices.Sum(i => i.NetDue ?? 0);
             ViewBag.RoomRevenue = invoices.Sum(i => i.RoomCharge);
             ViewBag.ServiceRevenue = invoices.Sum(i => i.ServicesCharge);
@@ -170,7 +167,6 @@ namespace HotelManagement.Controllers
                 return RedirectToAction("Login", "Auth");
             }
 
-            // Handle preset filters
             if (!string.IsNullOrEmpty(preset))
             {
                 var today = DateTime.Today;
@@ -229,7 +225,6 @@ namespace HotelManagement.Controllers
             var totalRoomDays = totalRooms * totalDays;
 
             // Tính số ngày hoặc số giờ ở (tổng số lượng)
-            // Nếu có check-out thực tế thì dùng, nếu không thì dùng dự kiến từ ReservationForm
             var occupiedDays = checkIns.Sum(h =>
             {
                 var actualCheckOut = _context.HistoryCheckOuts

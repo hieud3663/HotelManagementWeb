@@ -90,7 +90,7 @@ namespace HotelManagement.Controllers
 
 
             var actualCheckInDate = reservation.HistoryCheckin?.CheckInDate ?? reservation.CheckInDate;
-            var actualCheckOutDate = DateTime.Now; // Checkout thực tế = hiện tại
+            var actualCheckOutDate = DateTime.Now;
 
             var unitPrice = reservation.UnitPrice;
             var priceUnit = reservation.PriceUnit;
@@ -98,16 +98,21 @@ namespace HotelManagement.Controllers
             var actualMinutes = (actualCheckOutDate - actualCheckInDate).TotalMinutes;
 
             decimal timeUnits;
+            double actualDuration; 
+            
             if (priceUnit == "DAY")
             {
-                timeUnits = (decimal)Math.Ceiling(actualMinutes / 1440.0); // 1440 phút = 1 ngày
+                timeUnits = (decimal)Math.Ceiling(actualMinutes / 1440.0);
+                actualDuration = Math.Ceiling(actualMinutes / 1440.0); 
             }
             else // HOUR
             {
                 timeUnits = (decimal)Math.Ceiling(actualMinutes / 60.0);
+                actualDuration = Math.Ceiling(actualMinutes / 60.0); 
             }
 
             if (timeUnits < 1) timeUnits = 1;
+            if (actualDuration < 1) actualDuration = 1; 
 
             decimal roomCharge = unitPrice * timeUnits;
 
@@ -137,10 +142,6 @@ namespace HotelManagement.Controllers
             var expectedTaxAmount = expectedSubTotal * 0.1m;
             var expectedTotalAmount = expectedSubTotal + expectedTaxAmount;
             var expectedAmountDue = expectedTotalAmount - (decimal)reservation.RoomBookingDeposit;
-
-            var actualDuration = priceUnit == "HOUR"
-                ? Math.Ceiling((actualCheckOutDate - actualCheckInDate).TotalHours)
-                : Math.Ceiling((actualCheckOutDate - actualCheckInDate).TotalDays);
 
             ViewBag.UnitPrice = unitPrice;
             ViewBag.PriceUnit = priceUnit;

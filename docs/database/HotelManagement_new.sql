@@ -2614,6 +2614,122 @@ BEGIN
 END;
 GO
 
+USE HotelManagement;
+GO
+
+
+-- ================================================================
+-- SP: Chuyển đổi giá giờ sang giá ngày nếu ở quá 6 giờ
+-- ================================================================
+CREATE OR ALTER PROCEDURE sp_ConvertHourlyToDaily
+    @reservationFormID NVARCHAR(15),
+    @employeeID NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Lấy thông tin đặt phòng
+        DECLARE @priceUnit NVARCHAR(15);
+        DECLARE @roomCategoryID NVARCHAR(15);
+        DECLARE @checkInDateExpected DATETIME;
+        DECLARE @checkInDateActual DATETIME;
+        DECLARE @hourPrice MONEY;
+        DECLARE @dayPrice MONEY;
+        
+        SELECT 
+            @priceUnit = rf.priceUnit,
+            @roomCategoryID = r.roomCategoryID,
+            @checkInDateExpected = rf.checkInDate
+        FROM ReservationForm rf
+        JOIN Room r ON rf.roomID = r.roomID
+        WHERE rf.reservationFormID = @reservationFormID;
+        
+        -- Kiểm tra có phải giá giờ không
+        IF @priceUnit <> 'HOUR'
+        BEGIN
+            RAISERROR(N'Phòng không thuê theo giờ', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra đã check-in chưa
+        SELECT @checkInDateActual = checkInDate
+        FROM HistoryCheckin
+        WHERE reservationFormID = @reservationFormID;
+        
+        IF @checkInDateActual IS NULL
+        BEGIN
+            RAISERROR(N'Phòng chưa check-in', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Kiểm tra thời gian ở > 6 giờ
+        DECLARE @hoursStayed INT = DATEDIFF(HOUR, @checkInDateActual, GETDATE());
+        
+        IF @hoursStayed <= 6
+        BEGIN
+            RAISERROR(N'Thời gian ở chưa đủ 6 giờ để chuyển đổi', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Lấy giá ngày
+        SELECT @dayPrice = price
+        FROM Pricing
+        WHERE roomCategoryID = @roomCategoryID AND priceUnit = 'DAY';
+        
+        IF @dayPrice IS NULL
+        BEGIN
+            RAISERROR(N'Không tìm thấy giá theo ngày', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN -1;
+        END
+        
+        -- Cập nhật ReservationForm
+        UPDATE ReservationForm
+        SET priceUnit = 'DAY',
+            unitPrice = @dayPrice
+        WHERE reservationFormID = @reservationFormID;
+        
+        -- Log lại thay đổi vào RoomChangeHistory
+        DECLARE @roomID NVARCHAR(15);
+        SELECT @roomID = roomID FROM ReservationForm WHERE reservationFormID = @reservationFormID;
+        
+        DECLARE @changeHistoryID NVARCHAR(15) = dbo.fn_GenerateID('RCH-', 'RoomChangeHistory', 'roomChangeHistoryID', 6);
+        
+        INSERT INTO RoomChangeHistory (roomChangeHistoryID, dateChanged, roomID, reservationFormID, employeeID)
+        VALUES (@changeHistoryID, GETDATE(), @roomID, @reservationFormID, @employeeID);
+        
+        -- Trả về kết quả
+        SELECT 
+            @reservationFormID AS ReservationFormID,
+            'HOUR' AS OldPriceUnit,
+            @hourPrice AS OldUnitPrice,
+            'DAY' AS NewPriceUnit,
+            @dayPrice AS NewUnitPrice,
+            @hoursStayed AS HoursStayed,
+            'SUCCESS' AS Status;
+        
+        COMMIT TRANSACTION;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN -1;
+    END CATCH
+END;
+GO
+
+-- Test procedure
+-- EXEC sp_ConvertHourlyToDaily @reservationFormID = 'RF-000001', @employeeID = 'EMP-000001';
+
 --=======================================================================
 -- CÁC CÂU TRUY VẤN SQL
 --=======================================================================

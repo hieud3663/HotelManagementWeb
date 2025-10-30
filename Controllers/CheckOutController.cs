@@ -173,7 +173,86 @@ namespace HotelManagement.Controllers
             ViewBag.ExpectedAmountDue = Math.Round(expectedAmountDue, 0);
 
             ViewBag.ExistingInvoice = existingInvoice;
+            
+            // Kiểm tra có thể chuyển đổi sang giá ngày không
+            ViewBag.CanConvertToDaily = CanConvertToDaily(reservation, actualCheckInDate);
+            ViewBag.HoursStayed = (actualCheckOutDate - actualCheckInDate).TotalHours;
+            
             return View(reservation);
+        }
+
+        // Kiểm tra xem có thể chuyển đổi từ giá giờ sang giá ngày không
+        private bool CanConvertToDaily(ReservationForm reservation, DateTime actualCheckInDate)
+        {
+            // Chỉ cho phép chuyển đổi nếu:
+            // 1. Đang thuê theo giờ
+            // 2. Đã ở quá 6 giờ
+            // 3. Chưa có invoice
+            if (reservation.PriceUnit != "HOUR") return false;
+            
+            var hoursStayed = (DateTime.UtcNow.AddHours(7) - actualCheckInDate).TotalHours;
+            if (hoursStayed <= 6) return false;
+            
+            var hasInvoice = _context.Invoices.Any(i => i.ReservationFormID == reservation.ReservationFormID);
+            if (hasInvoice) return false;
+            
+            return true;
+        }
+
+        // Chuyển đổi từ giá giờ sang giá ngày
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConvertToDaily(string reservationFormID)
+        {
+            if (!CheckAuth()) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var employeeID = HttpContext.Session.GetString("EmployeeID");
+
+                // Gọi stored procedure để chuyển đổi
+                using (var connection = _context.Database.GetDbConnection())
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "sp_ConvertHourlyToDaily";
+                        command.CommandType = System.Data.CommandType.StoredProcedure;
+
+                        command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@reservationFormID", reservationFormID));
+                        command.Parameters.Add(new Microsoft.Data.SqlClient.SqlParameter("@employeeID", employeeID ?? ""));
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var status = reader["Status"].ToString();
+                                
+                                if (status == "SUCCESS")
+                                {
+                                    var oldPriceUnit = reader["OldPriceUnit"].ToString();
+                                    var newPriceUnit = reader["NewPriceUnit"].ToString();
+                                    var newUnitPrice = reader["NewUnitPrice"];
+                                    var hoursStayed = reader["HoursStayed"];
+                                    
+                                    TempData["Success"] = $"Chuyển đổi thành công từ giá {oldPriceUnit} sang giá {newPriceUnit}! " +
+                                                         $"Đã ở {hoursStayed} giờ. Đơn giá mới: {newUnitPrice:N0} VNĐ/ngày";
+                                }
+                                else
+                                {
+                                    TempData["Error"] = "Không thể chuyển đổi. " + status;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.InnerException?.Message ?? ex.Message;
+            }
+
+            return RedirectToAction("Details", new { reservationFormID });
         }
 
         // LUỒNG 1: TRẢ PHÒNG VÀ THANH TOÁN (Checkout Then Pay)
